@@ -1,0 +1,19 @@
+{
+  "name": "provenance-kernel",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Runnable prototype of the provenance and auditability design: content-addressed storage, signed provenance records, a Merkle transparency log, proof bundles, and a standalone verifier.",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test 'test/*.test.ts'",
+    "demo": "node src/demo.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "@types/node": "^22.10.0"
+  }
+}
