@@ -64,6 +64,11 @@ One memo, ingest to approval, then the LP audit question:
      caught by the `prev_attempt` chain.
   4. **Rewritten log** - a rebuilt history cannot produce a consistency proof
      back to the externally anchored root.
+- Identity is bound, not just signed: a record whose claimed actor identity or
+  delegation chain differs from its certificate is rejected, so a valid key
+  holder cannot attribute its work to someone else.
+- The verifier fails closed: malformed timestamps, tree sizes, or records
+  produce failed reports, never a thrown exception or a bypassed check.
 
 ## What this deliberately is not
 
