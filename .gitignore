@@ -1,0 +1,12 @@
+# --- agent scaffolding: not part of the submission ---
+firstmate/
+.agents/
+.claude/
+.lavish/
+.no-mistakes/
+AGENTS.md
+CLAUDE.md
+skills-lock.json
+
+# --- os noise ---
+.DS_Store
