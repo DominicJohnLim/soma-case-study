@@ -138,6 +138,45 @@ test("the bundle is self-contained: verification uses only trust anchors", () =>
   assert.equal(report.ok, true);
 });
 
+test("a malformed record timestamp cannot bypass certificate validity checks", () => {
+  const world = runDemo();
+  const bundle = clone(world.bundle);
+  bundle.records[0]!.record.timestamps.completed = "not-a-timestamp";
+  const report = verifyBundle(bundle, world.trust);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((e) => e.includes("unparseable time")));
+});
+
+test("a non-integer tree size yields a failed report, not a throw", () => {
+  const world = runDemo();
+  const bundle = clone(world.bundle);
+  (bundle.signed_tree_head as { tree_size: number }).tree_size = 1.5;
+  const report = verifyBundle(bundle, world.trust);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((e) => e.includes("bundle malformed")));
+});
+
+test("a record missing fields is reported malformed without aborting the others", () => {
+  const world = runDemo();
+  const bundle = clone(world.bundle);
+  delete (bundle.records[0]!.record as { timestamps?: unknown }).timestamps;
+  const report = verifyBundle(bundle, world.trust);
+  assert.equal(report.ok, false);
+  assert.ok(report.errors.some((e) => e.includes("malformed")));
+  // Every other record still gets its inclusion check.
+  const included = report.checks.filter((c) => c.includes("is in the log"));
+  assert.ok(included.length >= bundle.records.length - 1);
+});
+
+test("lineage closure is reported independently of unrelated failures", () => {
+  const world = runDemo();
+  const bundle = clone(world.bundle);
+  bundle.records[0]!.record.signature = `ed25519:${Buffer.alloc(64).toString("base64")}`;
+  const report = verifyBundle(bundle, world.trust);
+  assert.equal(report.ok, false);
+  assert.ok(report.checks.some((c) => c.includes("lineage closure verified")));
+});
+
 test("wrong trust anchors reject everything", () => {
   const world = runDemo();
   const otherCa = new CertificateAuthority("ca:someone-else");

@@ -74,6 +74,11 @@ One memo, ingest to approval, then the LP audit question:
   does not care what happens inside the step.
 - Not a real RFC 3161 integration: the timestamp authority is a stub with the
   same interface and verification semantics.
+- Not countersigned timestamps: the verifier evaluates certificate validity at
+  the record's self-claimed completion time, so a key holder can claim any
+  time inside its certificate window. The external anchor bounds when the log
+  prefix existed, not when individual records were created; per-record
+  countersigned timestamps (e.g. from the TSA) would be the upgrade.
 
 Provenance proves lineage, not truth: a hallucination gets recorded with
 perfect integrity. That boundary is drawn honestly in the design document,

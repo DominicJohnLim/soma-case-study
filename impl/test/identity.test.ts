@@ -4,8 +4,11 @@ import {
   CertificateAuthority,
   exportPublicKey,
   generateKeys,
+  signBytes,
   verifyCertificate,
+  type Certificate,
 } from "../src/identity.ts";
+import { canonicalBytes, type Json } from "../src/canonical.ts";
 
 const T0 = new Date("2026-07-08T09:00:00Z");
 const HOUR = 3600 * 1000;
@@ -58,6 +61,34 @@ test("an agent cert must delegate from a human principal", () => {
   const result = verifyCertificate(orphan, ca.publicKey(), new Date(T0.getTime() + 1000));
   assert.equal(result.ok, false);
   assert.match((result as { reason: string }).reason, /delegation chain terminating at a human/);
+});
+
+test("an invalid verification time is rejected, not treated as inside the window", () => {
+  const ca = new CertificateAuthority("ca:soma-org");
+  const cert = issueAgentCert(ca, 2 * HOUR);
+  const result = verifyCertificate(cert, ca.publicKey(), new Date("not-a-timestamp"));
+  assert.equal(result.ok, false);
+  assert.match((result as { reason: string }).reason, /unparseable time/);
+});
+
+test("a CA-signed cert with an unparseable validity window is rejected", () => {
+  const caKeys = generateKeys();
+  const subjectKeys = generateKeys();
+  const unsigned = {
+    subject: "agent:memo-writer/v2.3.1",
+    public_key: exportPublicKey(subjectKeys.publicKey),
+    delegation_chain: ["human:jane@soma.vc"],
+    not_before: "not-a-date",
+    not_after: "also-not-a-date",
+    issuer: "ca:soma-org",
+  };
+  const cert: Certificate = {
+    ...unsigned,
+    signature: signBytes(caKeys.privateKey, canonicalBytes(unsigned as unknown as Json)),
+  };
+  const result = verifyCertificate(cert, exportPublicKey(caKeys.publicKey), T0);
+  assert.equal(result.ok, false);
+  assert.match((result as { reason: string }).reason, /unparseable validity window/);
 });
 
 test("tampering with any cert field breaks the CA signature", () => {

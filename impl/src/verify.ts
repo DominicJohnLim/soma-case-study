@@ -28,6 +28,21 @@ export function verifyBundle(bundle: ProofBundle, trust: TrustAnchors): Verifica
   const pass = (msg: string) => checks.push(msg);
   const fail = (msg: string) => errors.push(msg);
 
+  try {
+    runChecks(bundle, trust, pass, fail);
+  } catch (err) {
+    fail(`bundle malformed: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
+  return { ok: errors.length === 0, checks, errors };
+}
+
+function runChecks(
+  bundle: ProofBundle,
+  trust: TrustAnchors,
+  pass: (msg: string) => void,
+  fail: (msg: string) => void,
+): void {
   // 1. Tree heads: both signed by the same log key.
   const sth = bundle.signed_tree_head;
   const anchored = bundle.anchored_tree_head;
@@ -80,61 +95,71 @@ export function verifyBundle(bundle: ProofBundle, trust: TrustAnchors): Verifica
   // 5. Per-record checks: inclusion in the log, signature under a valid cert.
   const producers = new Map<string, string>(); // artifact -> step_id
   const stepIds = new Set<string>();
-  for (const { record, log_index, inclusion_proof } of bundle.records) {
-    stepIds.add(record.step_id);
-    if (record.output !== null) {
-      producers.set(record.output.artifact, record.step_id);
-    }
+  for (const [position, entry] of bundle.records.entries()) {
+    try {
+      const { record, log_index, inclusion_proof } = entry;
+      stepIds.add(record.step_id);
+      if (record.output !== null) {
+        producers.set(record.output.artifact, record.step_id);
+      }
 
-    if (
-      verifyInclusion(
-        recordLeafHashHex(record),
-        log_index,
-        sth.tree_size,
-        inclusion_proof,
-        sth.root,
-      )
-    ) {
-      pass(`record ${record.step_id} is in the log at index ${log_index}`);
-    } else {
-      fail(`record ${record.step_id}: inclusion proof failed - not provably in the log`);
-    }
+      if (
+        verifyInclusion(
+          recordLeafHashHex(record),
+          log_index,
+          sth.tree_size,
+          inclusion_proof,
+          sth.root,
+        )
+      ) {
+        pass(`record ${record.step_id} is in the log at index ${log_index}`);
+      } else {
+        fail(`record ${record.step_id}: inclusion proof failed - not provably in the log`);
+      }
 
-    const cert = certsByFingerprint.get(record.actor.cert_fingerprint);
-    if (cert === undefined) {
-      fail(`record ${record.step_id}: no certificate in bundle for its actor`);
-      continue;
-    }
-    const certCheck = verifyCertificate(cert, trust.ca_public_key, new Date(record.timestamps.completed));
-    if (!certCheck.ok) {
-      fail(`record ${record.step_id}: ${certCheck.reason}`);
-      continue;
-    }
-    const sigCheck = verifyRecordSignature(record, cert);
-    if (sigCheck.ok) {
-      pass(`record ${record.step_id} signed by ${record.actor.identity}`);
-    } else {
-      fail(sigCheck.reason);
+      const cert = certsByFingerprint.get(record.actor.cert_fingerprint);
+      if (cert === undefined) {
+        fail(`record ${record.step_id}: no certificate in bundle for its actor`);
+        continue;
+      }
+      const certCheck = verifyCertificate(cert, trust.ca_public_key, new Date(record.timestamps.completed));
+      if (!certCheck.ok) {
+        fail(`record ${record.step_id}: ${certCheck.reason}`);
+        continue;
+      }
+      const sigCheck = verifyRecordSignature(record, cert);
+      if (sigCheck.ok) {
+        pass(`record ${record.step_id} signed by ${record.actor.identity}`);
+      } else {
+        fail(sigCheck.reason);
+      }
+    } catch (err) {
+      fail(`record at bundle position ${position} is malformed: ${err instanceof Error ? err.message : String(err)}`);
     }
   }
 
   // 6. Lineage closure: the target and every input trace to records in the bundle.
+  let lineageClosed = true;
+  const failLineage = (msg: string) => {
+    lineageClosed = false;
+    fail(msg);
+  };
   if (!producers.has(bundle.target)) {
-    fail(`no record in the bundle produces the target artifact ${bundle.target}`);
+    failLineage(`no record in the bundle produces the target artifact ${bundle.target}`);
   } else {
     pass(`target artifact is produced by ${producers.get(bundle.target)}`);
   }
   for (const { record } of bundle.records) {
     for (const input of record.inputs) {
       if (!producers.has(input.artifact)) {
-        fail(`lineage incomplete: input ${input.role} (${input.artifact}) of ${record.step_id} has no producing record in the bundle`);
+        failLineage(`lineage incomplete: input ${input.role} (${input.artifact}) of ${record.step_id} has no producing record in the bundle`);
       }
     }
     if (record.prev_attempt !== undefined && !stepIds.has(record.prev_attempt)) {
-      fail(`attempt chain incomplete: ${record.prev_attempt} missing from the bundle`);
+      failLineage(`attempt chain incomplete: ${record.prev_attempt} missing from the bundle`);
     }
   }
-  if (errors.length === 0) {
+  if (lineageClosed) {
     pass("lineage closure verified: every input traces to a record in the bundle");
   }
 
@@ -148,6 +173,4 @@ export function verifyBundle(bundle: ProofBundle, trust: TrustAnchors): Verifica
       }
     }
   }
-
-  return { ok: errors.length === 0, checks, errors };
 }

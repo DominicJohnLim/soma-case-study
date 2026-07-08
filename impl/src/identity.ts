@@ -118,10 +118,19 @@ export function verifyCertificate(
   if (!verifyBytes(caPublicKey, certSigningPayload(cert), cert.signature)) {
     return { ok: false, reason: `certificate for ${cert.subject} not signed by trusted CA` };
   }
-  if (at < new Date(cert.not_before)) {
+  const atMs = at.getTime();
+  const notBeforeMs = new Date(cert.not_before).getTime();
+  const notAfterMs = new Date(cert.not_after).getTime();
+  if (Number.isNaN(atMs)) {
+    return { ok: false, reason: `certificate for ${cert.subject} cannot be validated at an unparseable time` };
+  }
+  if (Number.isNaN(notBeforeMs) || Number.isNaN(notAfterMs)) {
+    return { ok: false, reason: `certificate for ${cert.subject} has an unparseable validity window` };
+  }
+  if (atMs < notBeforeMs) {
     return { ok: false, reason: `certificate for ${cert.subject} not yet valid at ${at.toISOString()}` };
   }
-  if (at > new Date(cert.not_after)) {
+  if (atMs > notAfterMs) {
     return { ok: false, reason: `certificate for ${cert.subject} expired at ${cert.not_after}` };
   }
   if (cert.subject.startsWith("agent:")) {
