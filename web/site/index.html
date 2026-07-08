@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Provenance Kernel - a runnable system design case study</title>
+<meta name="description" content="Provenance and auditability dashboard: real output from the running kernel">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #F7F5F0; }
+  body { font-family: 'IBM Plex Sans', sans-serif; color: #1C1A15; -webkit-font-smoothing: antialiased; }
+  a { color: #1F7A4D; text-decoration: none; }
+  a:hover { color: #145936; text-decoration: underline; }
+  ::selection { background: #DCE9DF; }
+  * { box-sizing: border-box; }
+
+  @keyframes riseIn { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: translateY(0); } }
+  @keyframes caretBlink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }
+  @keyframes countPop { 0% { opacity: 0; transform: scale(0.82); } 60% { transform: scale(1.04); } 100% { opacity: 1; transform: scale(1); } }
+  .rise { opacity: 0; animation: riseIn 0.7s cubic-bezier(0.22,0.61,0.36,1) forwards; }
+  .caret { display: inline-block; width: 0.5em; height: 0.92em; background: #2FA968; margin-left: 4px; transform: translateY(0.08em); animation: caretBlink 1.05s step-end infinite; }
+  .count-pop { animation: countPop 0.6s cubic-bezier(0.22,0.61,0.36,1) 0.4s both; }
+
+  .mono { font-family: 'IBM Plex Mono', monospace; }
+  .serif { font-family: 'Newsreader', serif; }
+
+  .btn-primary { display: inline-flex; align-items: center; background: #2FA968; color: #0E1710; font-size: 14px; font-weight: 600; padding: 14px 26px; letter-spacing: 0.01em; }
+  .btn-primary:hover { background: #43c07d; color: #0E1710; text-decoration: none; }
+  .btn-ghost { display: inline-flex; align-items: center; background: transparent; color: #F7F5F0; border: 1px solid #4A4638; font-size: 14px; font-weight: 500; padding: 13px 26px; }
+  .btn-ghost:hover { background: #221F17; color: #F7F5F0; text-decoration: none; border-color: #6E6759; }
+
+  .report-scroll { scrollbar-width: thin; scrollbar-color: #4E7A5F #16140F; }
+  .report-scroll::-webkit-scrollbar { width: 10px; }
+  .report-scroll::-webkit-scrollbar-track { background: #16140F; border-left: 1px solid #33302A; }
+  .report-scroll::-webkit-scrollbar-thumb { background: #35513F; border: 2px solid #16140F; border-radius: 0; }
+  .report-scroll::-webkit-scrollbar-thumb:hover { background: #4E7A5F; }
+
+  .wf-row { display: grid; grid-template-columns: 44px 200px 1fr 200px 170px 78px; gap: 0 16px; align-items: center; padding: 13px 18px; border-bottom: 1px solid #E1DCD0; }
+  .wf-row:last-child { border-bottom: none; }
+  .wf-head { display: grid; grid-template-columns: 44px 200px 1fr 200px 170px 78px; gap: 0 16px; align-items: center; padding: 10px 18px; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.07em; color: #6E6759; }
+  .badge-ok { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 2px 8px; }
+  .badge-fail { font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #B23A2B; border: 1px solid #DCA79C; padding: 2px 8px; }
+  .chip { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px; }
+  .chip-dark { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #F7F5F0; background: #1C1A15; padding: 2px 7px; }
+
+  .tab-btn { font-family: 'IBM Plex Mono', monospace; font-size: 12px; padding: 13px 10px; border: none; border-right: 1px solid #1C1A15; cursor: pointer; text-align: left; line-height: 1.4; background: #F7F5F0; color: #1C1A15; }
+  .tab-btn:last-child { border-right: none; }
+  .tab-btn:hover { text-decoration: underline; }
+  .tab-btn.active { background: #1C1A15; color: #F7F5F0; }
+
+  .section-head { display: flex; align-items: baseline; gap: 18px; margin-bottom: 10px; }
+  .section-num { font-family: 'IBM Plex Mono', monospace; font-size: 13px; color: #1F7A4D; font-weight: 500; }
+  .section-title { font-family: 'Newsreader', serif; font-weight: 500; font-size: 32px; letter-spacing: -0.01em; margin: 0; }
+  .section-sub { font-size: 15px; line-height: 1.6; color: #6E6759; max-width: 46em; margin: 0 0 28px 0; text-wrap: pretty; }
+
+  @media (max-width: 860px) {
+    .hero-h1 { font-size: 44px !important; }
+    .stat-grid { grid-template-columns: 1fr !important; }
+    .stat-feature { border-right: none !important; border-bottom: 1px solid #1C1A15; }
+    .wf-wrap { overflow-x: auto; }
+    .wf-row, .wf-head { min-width: 780px; }
+    .tamper-tabs { grid-template-columns: 1fr 1fr !important; }
+    .tab-btn { border-bottom: 1px solid #1C1A15; }
+    .two-col { grid-template-columns: 1fr !important; }
+    .pv-grid { grid-template-columns: 1fr !important; }
+    .pv-left { border-right: none !important; border-bottom: 1px solid #1C1A15; }
+  }
+</style>
+</head>
+<body>
+
+<div style="min-height: 100vh; background: #F7F5F0;">
+<div style="max-width: 1024px; margin: 0 auto; padding: 0 32px 96px 32px;">
+
+  <!-- Top bar -->
+  <header style="display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 26px 0 22px 0; border-bottom: 1px solid #1C1A15;">
+    <div class="mono" style="font-size: 13px; letter-spacing: 0.08em; font-weight: 500;">PROVENANCE KERNEL <span style="color: #6E6759; font-weight: 400;">/ system design case study</span></div>
+    <nav class="mono" style="display: flex; gap: 24px; font-size: 12.5px;">
+      <a href="/write-up" style="color: #1C1A15;">write-up</a>
+      <a href="/bundle.json" download style="color: #1C1A15;">bundle.json</a>
+    </nav>
+  </header>
+
+  <!-- Hero -->
+  <section style="padding: 40px 0 0 0;">
+    <div style="background: #16140F; color: #F7F5F0; padding: 52px 48px 48px 48px; position: relative; overflow: hidden;">
+      <div style="position: absolute; inset: 0; background-image: linear-gradient(90deg, rgba(255,255,255,0.028) 1px, transparent 1px), linear-gradient(rgba(255,255,255,0.028) 1px, transparent 1px); background-size: 44px 44px; pointer-events: none;"></div>
+      <div style="position: relative;">
+        <div class="rise mono" style="animation-delay: 0.02s; font-size: 11.5px; letter-spacing: 0.16em; color: #7FB899; margin-bottom: 30px; display: flex; align-items: center; gap: 12px;">PROVENANCE &amp; AUDITABILITY <span style="color: #4A4638;">-</span> RUNNABLE PROTOTYPE</div>
+        <h1 class="rise serif hero-h1" style="animation-delay: 0.08s; font-weight: 400; font-size: 76px; line-height: 0.98; letter-spacing: -0.025em; margin: 0 0 28px 0; max-width: 13em;">AI agents can't be made deterministic.<br><em style="font-style: italic; color: #2FA968;">Their paper trail can.</em></h1>
+        <p class="rise" style="animation-delay: 0.16s; font-size: 18px; line-height: 1.55; color: #C8C2B4; max-width: 40em; margin: 0 0 34px 0; text-wrap: pretty;">A provenance kernel for an AI-agent-driven investment platform. Every step is wrapped in a signed, tamper-evident record - verifiable by an outsider who trusts nothing but two public keys.</p>
+        <div class="rise" style="animation-delay: 0.24s; display: flex; flex-wrap: wrap; gap: 12px; align-items: center;">
+          <a href="/write-up" class="btn-primary">Read the write-up &nbsp;&rarr;</a>
+          <a href="/bundle.json" download class="btn-ghost">Download the proof bundle</a>
+          <span class="mono" style="font-size: 11.5px; color: #7A7464; margin-left: 4px;">real kernel output, baked at build time<span class="caret"></span></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Feature stat + supporting trio -->
+    <div class="stat-grid" style="display: grid; grid-template-columns: 1.15fr 1fr; border: 1px solid #1C1A15; border-top: none;">
+      <div class="rise stat-feature" style="animation-delay: 0.34s; padding: 34px 40px; background: #F1F5F1; border-right: 1px solid #1C1A15; display: flex; flex-direction: column; justify-content: center;">
+        <div style="display: flex; align-items: baseline; gap: 14px;">
+          <div id="stat-tamper" class="serif count-pop" style="font-size: 108px; font-weight: 500; line-height: 0.82; color: #1F7A4D;">4<span style="font-size: 52px; color: #7FA98C;">/4</span></div>
+          <div style="padding-bottom: 8px;">
+            <div class="mono" style="font-size: 12px; letter-spacing: 0.06em; color: #1F7A4D; font-weight: 500;">TAMPER ATTEMPTS</div>
+            <div class="mono" style="font-size: 12px; letter-spacing: 0.06em; color: #1F7A4D; font-weight: 500;">CAUGHT BY THE MATH</div>
+          </div>
+        </div>
+        <p style="font-size: 14px; line-height: 1.5; color: #4A6B54; margin: 18px 0 0 0; max-width: 26em;">A doctored memo, a forged identity, a hidden failure, a rewritten log - every cheat fails verification. <a href="#tamper" style="color: #1F7A4D; font-weight: 500;">See section 03 &rarr;</a></p>
+      </div>
+      <div id="stat-trio" style="display: grid; grid-template-rows: repeat(3, 1fr); background: #FCFBF7;"></div>
+    </div>
+  </section>
+
+  <!-- Section 1: workflow -->
+  <section style="padding: 64px 0 56px 0; border-bottom: 1px solid #E1DCD0;">
+    <div class="section-head">
+      <span class="section-num">01</span>
+      <h2 class="section-title">What happened: one memo, ingest to approval</h2>
+    </div>
+    <p class="section-sub">A simulated but fully executed run of the platform's memo pipeline. Note the recorded failure - retries are first-class history, not embarrassments to erase - and that the edit and approval carry a person's identity, not an agent's.</p>
+
+    <div class="wf-wrap" style="border: 1px solid #1C1A15; background: #FCFBF7;">
+      <div class="wf-head">
+        <div>LOG</div><div>STEP</div><div>ACTION / ACTOR</div><div>OUTPUT ARTIFACT</div><div>COMPLETED</div><div style="text-align: right;">OUTCOME</div>
+      </div>
+      <div id="workflow-rows"></div>
+    </div>
+    <p id="workflow-caption" class="mono" style="font-size: 11.5px; color: #6E6759; margin: 12px 0 0 0;"></p>
+  </section>
+
+  <!-- Section 2: verification -->
+  <section style="padding: 64px 0 56px 0; border-bottom: 1px solid #E1DCD0;">
+    <div class="section-head">
+      <span class="section-num">02</span>
+      <h2 class="section-title">The audit question, answered with proof</h2>
+    </div>
+    <p class="section-sub"><em class="serif" style="font-size: 17px; color: #1C1A15;">"Show me every action and data source that contributed to the decision to invest in Company&nbsp;X."</em><br>The system answers with a proof bundle - records, log proofs, identity certificates, an external timestamp - and a standalone verifier checks all of it while trusting only the organization's CA key and the external notary's key. Not the log. Not the database. Not the operator.</p>
+
+    <div style="border: 1px solid #1C1A15; background: #16140F;">
+      <div style="display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; padding: 10px 18px; border-bottom: 1px solid #33302A;">
+        <span class="mono" style="font-size: 11.5px; letter-spacing: 0.07em; color: #8A8474;">VERIFICATION REPORT &middot; HONEST HISTORY</span>
+        <span class="mono" style="font-size: 11.5px; color: #8A8474;">trust anchors: ca:soma-org, tsa:external-notary</span>
+      </div>
+      <div id="honest-report" class="report-scroll mono" style="padding: 16px 18px; font-size: 12px; line-height: 1.75; color: #CFC9BB; max-height: 420px; overflow-y: auto; overflow-wrap: anywhere;"></div>
+      <div id="verdict-line" class="mono" style="padding: 12px 18px; border-top: 1px solid #33302A; font-size: 12.5px; font-weight: 500; color: #6FCE9A;"></div>
+    </div>
+  </section>
+
+  <!-- Section 3: tamper scenarios -->
+  <section id="tamper" style="padding: 64px 0 56px 0; border-bottom: 1px solid #E1DCD0;">
+    <div class="section-head">
+      <span class="section-num">03</span>
+      <h2 class="section-title">Four attempts to cheat it. All caught.</h2>
+    </div>
+    <p class="section-sub">Each scenario tampers with the history in a different way, then runs the same verifier. These are precomputed from real runs at build time; the failing lines are the verifier's actual output.</p>
+
+    <div id="tamper-tabs" class="tamper-tabs" style="display: grid; grid-template-columns: repeat(4, 1fr); border: 1px solid #1C1A15; border-bottom: none;"></div>
+    <div id="tamper-panel" style="border: 1px solid #1C1A15; background: #FCFBF7;"></div>
+  </section>
+
+  <!-- Section 4: proves / does not prove -->
+  <section style="padding: 64px 0 40px 0;">
+    <div class="section-head" style="margin-bottom: 28px;">
+      <span class="section-num">04</span>
+      <h2 class="section-title">What this proves - and what it honestly doesn't</h2>
+    </div>
+    <div class="pv-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 0; border: 1px solid #1C1A15;">
+      <div class="pv-left" style="padding: 26px 28px; border-right: 1px solid #1C1A15; background: #FCFBF7;">
+        <div class="mono" style="font-size: 11.5px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500; margin-bottom: 16px;">PROVES</div>
+        <ul style="margin: 0; padding: 0 0 0 18px; font-size: 14.5px; line-height: 1.65; color: #4A453B; display: flex; flex-direction: column; gap: 10px;">
+          <li>Who produced every artifact, under which certificate, on whose delegated authority</li>
+          <li>Exactly which inputs each step consumed, by content hash</li>
+          <li>That nothing was modified, deleted, or reordered after the fact - including by administrators, once anchored</li>
+          <li>That the full lineage is present: hiding even a failed attempt breaks verification</li>
+        </ul>
+      </div>
+      <div style="padding: 26px 28px; background: #FCFBF7;">
+        <div class="mono" style="font-size: 11.5px; letter-spacing: 0.08em; color: #B23A2B; font-weight: 500; margin-bottom: 16px;">DOES NOT PROVE</div>
+        <ul style="margin: 0 0 16px 0; padding: 0 0 0 18px; font-size: 14.5px; line-height: 1.65; color: #4A453B; display: flex; flex-direction: column; gap: 10px;">
+          <li>That the AI was right - a hallucination gets recorded with perfect integrity</li>
+          <li>That external data sources told the truth - only what they served us, when</li>
+          <li>When a record was created beyond the anchor's bound - record times are self-claimed</li>
+        </ul>
+        <p style="font-size: 12.5px; line-height: 1.55; color: #6E6759; margin: 0;">These boundaries are structural, stated up front, and mitigated by requiring human approval records on every decision that matters.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer style="border-top: 1px solid #1C1A15; padding-top: 18px; display: flex; flex-wrap: wrap; gap: 8px 28px; align-items: baseline;" class="mono">
+    <span style="font-size: 11.5px; color: #6E6759;">Built as a system-design case study.</span>
+    <a href="/write-up" style="color: #1C1A15; font-size: 11.5px;">write-up</a>
+    <a href="/bundle.json" download style="color: #1C1A15; font-size: 11.5px;">proof bundle</a>
+    <span id="generated" style="font-size: 11.5px; color: #6E6759; margin-left: auto;"></span>
+  </footer>
+
+</div>
+</div>
+
+<script>
+const esc = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const utc = (iso) => iso ? iso.slice(11, 19) + " UTC" : "";
+
+async function main() {
+  const data = await (await fetch("/data.json")).json();
+  const wfId = (data.workflow[0]?.step_id || "wf").split("/")[0];
+
+  // Stats trio
+  document.getElementById("stat-trio").innerHTML = [
+    [data.stats.records, "SIGNED RECORDS", "one per step attempt, failures included", "#1C1A15", "0.40s", true],
+    [data.stats.identities, "IDENTITIES", "short-lived certs, human-rooted", "#1C1A15", "0.46s", true],
+    [data.stats.checks_passed, "CHECKS PASSED", "by a zero-trust standalone verifier", "#1F7A4D", "0.52s", false],
+  ].map(([v, t, d, color, delay, border]) =>
+    '<div class="rise" style="animation-delay: ' + delay + '; padding: 15px 28px;' + (border ? ' border-bottom: 1px solid #E1DCD0;' : '') + ' display: flex; align-items: baseline; gap: 16px;">' +
+    '<div class="serif" style="font-size: 38px; font-weight: 500; line-height: 1; min-width: 56px; color: ' + color + ';">' + v + '</div>' +
+    '<div><div class="mono" style="font-size: 10.5px; letter-spacing: 0.06em;">' + t + '</div><div style="font-size: 12.5px; color: #6E6759; margin-top: 2px;">' + d + '</div></div></div>'
+  ).join("");
+
+  // Tamper feature count (real)
+  const n = data.scenarios.length;
+  document.getElementById("stat-tamper").innerHTML = n + '<span style="font-size: 52px; color: #7FA98C;">/' + n + '</span>';
+
+  // Workflow rows
+  document.getElementById("workflow-rows").innerHTML = data.workflow.map((r, i) => {
+    const failed = r.outcome !== "success";
+    const shortStep = r.step_id.replace(wfId + "/", "");
+    const actorHtml = r.actor.startsWith("human:")
+      ? '<span style="color: #6E6759;">&middot;</span> <span style="font-weight: 600;">' + esc(r.actor) + "</span>"
+      : '<span style="color: #6E6759;">&middot; ' + esc(r.actor) + "</span>";
+    const chips = [];
+    if (r.prev_attempt) chips.push('<span class="chip">retry of attempt 1</span>');
+    if (r.output === data.target) chips.push('<span class="chip-dark">audit target</span>');
+    const action = chips.length
+      ? '<div style="font-size: 13.5px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;"><span>' + esc(r.action_type) + " " + actorHtml + "</span>" + chips.join("") + "</div>"
+      : '<div style="font-size: 13.5px;">' + esc(r.action_type) + " " + actorHtml + "</div>";
+    const output = r.output
+      ? '<div class="mono" style="font-size: 11.5px; color: #4A453B;">' + esc(r.output.slice(0, 18)) + "&hellip;</div>"
+      : '<div class="mono" style="font-size: 11.5px; color: #B23A2B;">' + esc(r.error || "no output") + "</div>";
+    return '<div class="wf-row"' + (failed ? ' style="background: #F8EFEA;"' : "") + '>' +
+      '<div class="mono" style="font-size: 12px; color: #6E6759;">' + i + "</div>" +
+      '<div class="mono" style="font-size: 12px;">' + esc(shortStep) + "</div>" +
+      action + output +
+      '<div class="mono" style="font-size: 11.5px; color: #6E6759;">' + utc(r.completed) + "</div>" +
+      '<div style="text-align: right;"><span class="' + (failed ? "badge-fail" : "badge-ok") + '">' + (failed ? "failed" : "ok") + "</span></div></div>";
+  }).join("");
+  document.getElementById("workflow-caption").innerHTML =
+    "workflow " + esc(wfId) + " &middot; log anchored externally at " + esc(data.stats.anchored_at.replace("T", " ").replace(".000Z", " UTC")) + " &middot; edits never overwrite: step_05 produced a new artifact from step_04's";
+
+  // Honest report
+  document.getElementById("honest-report").innerHTML = data.honest_report.checks
+    .map((c) => '<div><span style="color: #6FCE9A; font-weight: 500;">PASS</span> ' + esc(c) + "</div>").join("");
+  document.getElementById("verdict-line").innerHTML =
+    'VERIFIED: complete, signed, tamper-evident history. <span style="color: #8A8474; font-weight: 400;">' +
+    data.honest_report.checks.length + " / " + data.honest_report.checks.length + " checks passed</span>";
+
+  // Tamper tabs + panel
+  const tabLabels = { edit: "edit the approved memo", forge: "forge a lookalike identity", hide: "hide the failed attempt", rewrite: "rewrite the entire log" };
+  const tabs = document.getElementById("tamper-tabs");
+  const panel = document.getElementById("tamper-panel");
+  tabs.innerHTML = data.scenarios.map((s, i) =>
+    '<button class="tab-btn" data-id="' + s.id + '"><span style="opacity: 0.55;">' + (i + 1) + "&nbsp;</span> " + esc(tabLabels[s.id] || s.title) + "</button>"
+  ).join("");
+
+  function show(id) {
+    const s = data.scenarios.find((x) => x.id === id) || data.scenarios[0];
+    for (const b of tabs.querySelectorAll(".tab-btn")) b.classList.toggle("active", b.dataset.id === s.id);
+    const errors = s.report.errors.map((e) => '<div><span style="color: #FF8A73; font-weight: 500;">FAIL</span> ' + esc(e) + "</div>").join("");
+    panel.innerHTML = '<div style="padding: 24px;">' +
+      '<h3 class="serif" style="font-weight: 500; font-size: 22px; margin: 0 0 14px 0;">' + esc(s.title) + "</h3>" +
+      '<div class="two-col" style="display: grid; grid-template-columns: 1fr 1fr; gap: 24px; margin-bottom: 20px;">' +
+      '<div style="font-size: 14px; line-height: 1.6; color: #4A453B;"><span class="mono" style="font-size: 10.5px; letter-spacing: 0.07em; color: #B23A2B; display: block; margin-bottom: 5px;">THE CHEAT</span>' + esc(s.simple) + "</div>" +
+      '<div style="font-size: 14px; line-height: 1.6; color: #4A453B;"><span class="mono" style="font-size: 10.5px; letter-spacing: 0.07em; color: #1F7A4D; display: block; margin-bottom: 5px;">HOW IT GETS CAUGHT</span>' + esc(s.how) + "</div></div>" +
+      '<div class="mono" style="background: #16140F; padding: 14px 18px; font-size: 12px; line-height: 1.75; color: #CFC9BB; overflow-wrap: anywhere;">' + errors +
+      '<div style="color: #FF8A73; font-weight: 500; margin-top: 10px;">VERIFICATION FAILED (' + s.report.errors.length + " error" + (s.report.errors.length === 1 ? "" : "s") + ")</div></div></div>";
+  }
+  tabs.addEventListener("click", (e) => {
+    const b = e.target.closest(".tab-btn");
+    if (b) show(b.dataset.id);
+  });
+  show(data.scenarios[0].id);
+
+  document.getElementById("generated").textContent = "Data generated " + data.generated_at.slice(0, 10) + " by running the kernel at build time.";
+}
+main();
+</script>
+</body>
+</html>

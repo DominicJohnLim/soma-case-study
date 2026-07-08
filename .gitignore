@@ -6,6 +6,7 @@ firstmate/
 .no-mistakes/
 AGENTS.md
 CLAUDE.md
+HANDOFF.md
 skills-lock.json
 
 # --- os noise ---
@@ -19,3 +20,6 @@ Soma_Eng_System_Design_Case_Study.pdf
 node_modules/
 impl/.demo-data/
 dist/
+.gstack/
+Soma_Case_Study_Write-Up.pdf
+.vercel/
