@@ -3,7 +3,7 @@
 // actor's identity. Non-determinism stays contained inside the step; everything
 // at the boundary is exact, attributable, and permanent.
 
-import { canonicalBytes, sha256Canonical, type Json } from "./canonical.ts";
+import { canonicalBytes, sha256Canonical, signingPayload, type Json } from "./canonical.ts";
 import {
   certFingerprint,
   signBytes,
@@ -56,22 +56,20 @@ export interface ProvenanceRecord {
 
 export type UnsignedRecord = Omit<ProvenanceRecord, "signature">;
 
-function recordSigningPayload(record: UnsignedRecord): Uint8Array {
-  return canonicalBytes(record as unknown as Json);
-}
-
 export function signRecord(
   unsigned: UnsignedRecord,
   actorPrivateKey: KeyObject,
 ): ProvenanceRecord {
-  const signature = signBytes(actorPrivateKey, recordSigningPayload(unsigned));
+  const signature = signBytes(actorPrivateKey, signingPayload(unsigned));
   return { ...unsigned, signature };
 }
 
 /**
  * Verify a record's signature against the certificate it names.
  * The cert must actually be the one fingerprinted inside the record,
- * so a valid-but-different cert cannot be substituted.
+ * so a valid-but-different cert cannot be substituted, and the claimed
+ * actor identity and delegation chain must be the ones the CA certified,
+ * so a valid key holder cannot attribute its records to someone else.
  */
 export function verifyRecordSignature(
   record: ProvenanceRecord,
@@ -83,8 +81,22 @@ export function verifyRecordSignature(
       reason: `record ${record.step_id}: certificate fingerprint mismatch`,
     };
   }
-  const { signature, ...unsigned } = record;
-  if (!verifyBytes(cert.public_key, recordSigningPayload(unsigned), signature)) {
+  if (record.actor.identity !== cert.subject) {
+    return {
+      ok: false,
+      reason: `record ${record.step_id}: actor identity ${record.actor.identity} does not match certificate subject ${cert.subject}`,
+    };
+  }
+  if (
+    record.actor.delegation_chain.length !== cert.delegation_chain.length ||
+    record.actor.delegation_chain.some((p, i) => p !== cert.delegation_chain[i])
+  ) {
+    return {
+      ok: false,
+      reason: `record ${record.step_id}: actor delegation chain does not match certificate delegation chain`,
+    };
+  }
+  if (!verifyBytes(cert.public_key, signingPayload(record), record.signature)) {
     return {
       ok: false,
       reason: `record ${record.step_id}: signature does not verify under ${cert.subject}`,

@@ -34,6 +34,10 @@ export function canonicalize(value: Json): string {
       if (Array.isArray(value)) {
         return `[${value.map((v) => canonicalize(v)).join(",")}]`;
       }
+      const proto = Object.getPrototypeOf(value);
+      if (proto !== Object.prototype && proto !== null) {
+        throw new TypeError("only plain objects may appear in signed content");
+      }
       const keys = Object.keys(value).sort();
       const parts: string[] = [];
       for (const k of keys) {
@@ -50,6 +54,16 @@ export function canonicalize(value: Json): string {
 
 export function canonicalBytes(value: Json): Uint8Array {
   return new TextEncoder().encode(canonicalize(value));
+}
+
+/**
+ * The one signing-payload idiom: canonical bytes of a signed structure with
+ * its signature field omitted. Every signed type (certificate, record, tree
+ * head, anchor receipt) signs and verifies through this helper.
+ */
+export function signingPayload(value: object): Uint8Array {
+  const { signature: _omitted, ...unsigned } = value as { signature?: string };
+  return canonicalBytes(unsigned as unknown as Json);
 }
 
 /** sha256 over raw bytes, rendered as the address form used everywhere: "sha256:<hex>". */

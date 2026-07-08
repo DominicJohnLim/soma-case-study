@@ -3,7 +3,7 @@
 // verify that an anchored tree head existed by the receipt's time and was
 // never subsequently rewritten.
 
-import { canonicalBytes, type Json } from "./canonical.ts";
+import { signingPayload } from "./canonical.ts";
 import { exportPublicKey, generateKeys, signBytes, verifyBytes, type KeyPair } from "./identity.ts";
 import type { SignedTreeHead } from "./tlog.ts";
 
@@ -13,11 +13,6 @@ export interface AnchorReceipt {
   anchored_at: string; // ISO 8601, the TSA's clock
   tsa: string; // authority name
   signature: string;
-}
-
-function receiptSigningPayload(receipt: AnchorReceipt): Uint8Array {
-  const { signature: _omitted, ...unsigned } = receipt;
-  return canonicalBytes(unsigned as unknown as Json);
 }
 
 export class TimestampAuthority {
@@ -40,11 +35,11 @@ export class TimestampAuthority {
       anchored_at: now.toISOString(),
       tsa: this.name,
     };
-    const signature = signBytes(this.keys.privateKey, canonicalBytes(unsigned as unknown as Json));
+    const signature = signBytes(this.keys.privateKey, signingPayload(unsigned));
     return { ...unsigned, signature };
   }
 }
 
 export function verifyAnchorReceipt(receipt: AnchorReceipt, tsaPublicKey: string): boolean {
-  return verifyBytes(tsaPublicKey, receiptSigningPayload(receipt), receipt.signature);
+  return verifyBytes(tsaPublicKey, signingPayload(receipt), receipt.signature);
 }

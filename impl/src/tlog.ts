@@ -6,7 +6,7 @@
 // evident, not just policy-forbidden.
 
 import { createHash, type KeyObject } from "node:crypto";
-import { canonicalBytes, type Json } from "./canonical.ts";
+import { signingPayload } from "./canonical.ts";
 import {
   exportPublicKey,
   generateKeys,
@@ -104,14 +104,9 @@ export interface SignedTreeHead {
   signature: string;
 }
 
-function sthSigningPayload(sth: SignedTreeHead): Uint8Array {
-  const { signature: _omitted, ...unsigned } = sth;
-  return canonicalBytes(unsigned as unknown as Json);
-}
-
 export function verifySignedTreeHead(sth: SignedTreeHead, logPublicKey: string): boolean {
   if (sth.log_public_key !== logPublicKey) return false;
-  return verifyBytes(logPublicKey, sthSigningPayload(sth), sth.signature);
+  return verifyBytes(logPublicKey, signingPayload(sth), sth.signature);
 }
 
 export class TransparencyLog {
@@ -160,7 +155,7 @@ export class TransparencyLog {
       timestamp: now.toISOString(),
       log_public_key: this.publicKey(),
     };
-    const signature = signBytes(this.keys.privateKey, canonicalBytes(unsigned as unknown as Json));
+    const signature = signBytes(this.keys.privateKey, signingPayload(unsigned));
     return { ...unsigned, signature };
   }
 

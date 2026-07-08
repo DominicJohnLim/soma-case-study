@@ -46,7 +46,7 @@ function makeSignedRecord() {
     timestamps: { started: "2026-07-08T09:01:00Z", completed: "2026-07-08T09:01:30Z" },
     prev_attempt: "wf_8f2e/step_04/attempt_01",
   };
-  return { record: signRecord(unsigned, keys.privateKey), cert, ca };
+  return { record: signRecord(unsigned, keys.privateKey), cert, ca, keys };
 }
 
 test("a signed record verifies against its certificate", () => {
@@ -69,6 +69,40 @@ test("mutating any field breaks the signature", () => {
     const result = verifyRecordSignature(tampered, cert);
     assert.equal(result.ok, false, `mutation ${JSON.stringify(Object.keys(mutation))} must break the signature`);
   }
+});
+
+test("an agent key cannot claim a human identity, even with a valid signature", () => {
+  const { record, cert, keys } = makeSignedRecord();
+  const { signature: _sig, ...unsigned } = record;
+  const forged = signRecord(
+    {
+      ...unsigned,
+      action_type: "human_approval",
+      actor: { ...unsigned.actor, identity: "human:jane@soma.vc" },
+    },
+    keys.privateKey,
+  );
+  const result = verifyRecordSignature(forged, cert);
+  assert.equal(result.ok, false);
+  assert.match((result as { reason: string }).reason, /does not match certificate subject/);
+});
+
+test("a delegation chain differing from the certificate's is rejected", () => {
+  const { record, cert, keys } = makeSignedRecord();
+  const { signature: _sig, ...unsigned } = record;
+  const forged = signRecord(
+    {
+      ...unsigned,
+      actor: {
+        ...unsigned.actor,
+        delegation_chain: ["human:mallory@soma.vc", "role:memo-agents"],
+      },
+    },
+    keys.privateKey,
+  );
+  const result = verifyRecordSignature(forged, cert);
+  assert.equal(result.ok, false);
+  assert.match((result as { reason: string }).reason, /delegation chain does not match/);
 });
 
 test("a substituted certificate is rejected by fingerprint, even if valid", () => {

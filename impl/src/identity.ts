@@ -10,7 +10,7 @@ import {
   createPublicKey,
   type KeyObject,
 } from "node:crypto";
-import { canonicalBytes, sha256Canonical, type Json } from "./canonical.ts";
+import { sha256Canonical, signingPayload, type Json } from "./canonical.ts";
 
 export interface KeyPair {
   publicKey: KeyObject;
@@ -62,11 +62,6 @@ export interface Certificate {
   signature: string; // CA signature over the canonical cert minus this field
 }
 
-function certSigningPayload(cert: Certificate): Uint8Array {
-  const { signature: _omitted, ...unsigned } = cert;
-  return canonicalBytes(unsigned as unknown as Json);
-}
-
 export function certFingerprint(cert: Certificate): string {
   return sha256Canonical(cert as unknown as Json);
 }
@@ -99,7 +94,7 @@ export class CertificateAuthority {
       not_after: new Date(opts.notBefore.getTime() + opts.ttlMs).toISOString(),
       issuer: this.name,
     };
-    const signature = signBytes(this.keys.privateKey, canonicalBytes(unsigned as unknown as Json));
+    const signature = signBytes(this.keys.privateKey, signingPayload(unsigned));
     return { ...unsigned, signature };
   }
 }
@@ -115,7 +110,7 @@ export function verifyCertificate(
   caPublicKey: string,
   at: Date,
 ): CertVerification {
-  if (!verifyBytes(caPublicKey, certSigningPayload(cert), cert.signature)) {
+  if (!verifyBytes(caPublicKey, signingPayload(cert), cert.signature)) {
     return { ok: false, reason: `certificate for ${cert.subject} not signed by trusted CA` };
   }
   const atMs = at.getTime();

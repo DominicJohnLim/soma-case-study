@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { canonicalize, sha256, sha256Canonical } from "../src/canonical.ts";
+import { canonicalize, sha256, sha256Canonical, type Json } from "../src/canonical.ts";
 
 test("key order does not change the canonical encoding", () => {
   const a = { b: 1, a: [{ y: "z", x: null }], c: true };
@@ -25,6 +25,16 @@ test("non-finite and non-integer numbers are rejected", () => {
   assert.throws(() => canonicalize(Number.NaN));
   assert.throws(() => canonicalize(Infinity));
   assert.throws(() => canonicalize(0.7));
+});
+
+test("non-plain objects are rejected instead of silently canonicalizing to {}", () => {
+  class Widget {
+    a = 1;
+  }
+  assert.throws(() => canonicalize(new Date(0) as unknown as Json));
+  assert.throws(() => canonicalize(new Map() as unknown as Json));
+  assert.throws(() => canonicalize(new Widget() as unknown as Json));
+  assert.equal(canonicalize(Object.create(null) as Json), "{}");
 });
 
 test("different content yields different hashes", () => {

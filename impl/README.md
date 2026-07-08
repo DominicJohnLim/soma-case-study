@@ -13,7 +13,7 @@ everything is built on `node:crypto`.
 
 ```sh
 npm install        # dev tooling only (typescript, @types/node)
-npm test           # 36 tests, including the four tamper scenarios
+npm test           # 39 tests, including the four tamper scenarios
 npm run demo       # the full story, end to end
 npm run typecheck
 ```
