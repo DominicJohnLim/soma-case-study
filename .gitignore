@@ -10,3 +10,12 @@ skills-lock.json
 
 # --- os noise ---
 .DS_Store
+
+# --- docs & prompt: kept local, repo tracks implementation only ---
+soma-case-study-draft-v1.md
+Soma_Eng_System_Design_Case_Study.pdf
+
+# --- implementation runtime artifacts ---
+node_modules/
+impl/.demo-data/
+dist/
