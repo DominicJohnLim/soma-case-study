@@ -9,8 +9,8 @@ trust core.
 ## Deliverables
 
 The three deliverables (high-level architecture, deep dive, tradeoffs) are in
-[the write-up PDF](/Dominic%20Lim%20Write%20Up.pdf), and served live as a styled
-page with the diagrams inline: https://soma-capital-case-study.vercel.app
+[the write-up PDF](/Dominic%20Lim%20Write%20Up.pdf), which is
+also served as a styled page with the diagrams inline.
 
 Backing it up:
 
