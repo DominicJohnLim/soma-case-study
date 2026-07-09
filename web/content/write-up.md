@@ -1,7 +1,5 @@
 # Dominic Soma Cap Case Study
 
-*A written submission with a runnable prototype of the trust core behind it (about 2,000 lines of TypeScript, no runtime dependencies, 39 tests). The [dashboard](/) runs it live, and technical claims cite a `file:line`. You should be able to read this straight through without opening any of it.*
-
 ## Approach
 
 The design turns on one decision: you can't make an LLM deterministic, so don't try. Make the *record* of what it did deterministic instead. Let the model be as unpredictable as it wants inside a step. The moment anything crosses the step's edge (the inputs it read, the output it produced, who ran it, when) capture it exactly, sign it, and append it to a log that can't be rewritten. The unpredictable part stays sealed inside the step; everything observable from outside is exact, attributed, and permanent.
