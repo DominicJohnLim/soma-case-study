@@ -11,7 +11,7 @@
         "outcome": "success",
         "actor": {
           "identity": "agent:sourcing/v1.4.0",
-          "cert_fingerprint": "sha256:ba004a481c94b54e7a4c5c547af8a4bc828dba4c184fc95872750bddc64eda9e",
+          "cert_fingerprint": "sha256:ee0102889b3abe909a599e2569e1a9141683915ecd8d3f1ce31a4c643a75af09",
           "delegation_chain": [
             "human:jane@soma.vc",
             "role:sourcing-agents"
@@ -26,13 +26,13 @@
           "started": "2026-07-08T09:00:01.000Z",
           "completed": "2026-07-08T09:00:02.000Z"
         },
-        "signature": "ed25519:Y3jVf7/pKOUCCk4gZHrjSh/EwUpFV6aMh90rSOe2L0ZNmflp+AHLYn5zAU6MTsbqUD1ObFGPLtvXFWoWTvHWAw=="
+        "signature": "ed25519:4MdEkYfPXtbEFSa2BXdJ+x9MleUGZDMR88soygHcxMAMmh2wRZ1DznglaKNTGCx7LOLOFoYa8cUb2ZDV6hTEBA=="
       },
       "log_index": 0,
       "inclusion_proof": [
-        "6a4b7220f241a499ff9eaee3b064db90f47c3d6aa16f98396beecc56e6683e2c",
-        "8129500bc4095d7a26ace4f9bd250935f1bfbafc8302f34804e2ac8492280874",
-        "3e4be19eb4bd91d0cf4d29ad6904265e3d64777f09297e56cf74b9134c59a956"
+        "ac264746f22d633ae7728d4e547a3c4a6e95082a0c19b56a7e33c5f06b55bc28",
+        "98d1742bea13816586ee628c20c9f8835402c6967adcefc2817bf82fb5c02c21",
+        "fb800a5dece2ff5bb0d532677809d601201a3248e0f3692caa3913e6d16042da"
       ]
     },
     {
@@ -44,7 +44,7 @@
         "outcome": "success",
         "actor": {
           "identity": "agent:sourcing/v1.4.0",
-          "cert_fingerprint": "sha256:ba004a481c94b54e7a4c5c547af8a4bc828dba4c184fc95872750bddc64eda9e",
+          "cert_fingerprint": "sha256:ee0102889b3abe909a599e2569e1a9141683915ecd8d3f1ce31a4c643a75af09",
           "delegation_chain": [
             "human:jane@soma.vc",
             "role:sourcing-agents"
@@ -59,13 +59,13 @@
           "started": "2026-07-08T09:00:03.000Z",
           "completed": "2026-07-08T09:00:04.000Z"
         },
-        "signature": "ed25519:16AQQ/9cMvv5UeF9cM2StZXFrDeoIyjCScU2BimoYMre86/PwPwCcbRE3l2+BpOhdy9LVCub5LWKUaLeLzfeDA=="
+        "signature": "ed25519:YVICcz6Kj+lF2GXxyY3B520UqwOrIcF3dIYYr41LPeK47bShlqdnj0ZaO1Lj6366PnV7Eicm0b/7oxd9GudpAQ=="
       },
       "log_index": 1,
       "inclusion_proof": [
-        "9954a4919345d086a844e771aea69aac51eb6e24bfb0cd9a2952d87ffd4db551",
-        "8129500bc4095d7a26ace4f9bd250935f1bfbafc8302f34804e2ac8492280874",
-        "3e4be19eb4bd91d0cf4d29ad6904265e3d64777f09297e56cf74b9134c59a956"
+        "3103f951dd99ecec880a29f3e53a5f0c6d96a723cfe69e2500ab63aaafa6f2da",
+        "98d1742bea13816586ee628c20c9f8835402c6967adcefc2817bf82fb5c02c21",
+        "fb800a5dece2ff5bb0d532677809d601201a3248e0f3692caa3913e6d16042da"
       ]
     },
     {
@@ -77,7 +77,7 @@
         "outcome": "failure",
         "actor": {
           "identity": "agent:enrichment/v2.1.3",
-          "cert_fingerprint": "sha256:cf856ddf0b4c42d4065b123d224afac0b4da6a56c09afc8ef5947c8ddcf3acfa",
+          "cert_fingerprint": "sha256:2e5f3b7e96184aae0a01b1f3c338a7be5ab34d25bfe9709a1ff1db631c27b341",
           "delegation_chain": [
             "human:jane@soma.vc",
             "role:enrichment-agents"
@@ -106,16 +106,16 @@
             "temperature": "0.7",
             "max_tokens": 4096
           },
-          "provider_request_id": "req_791cee27"
+          "provider_request_id": "req_8281901e"
         },
         "error": "provider timeout after 60s",
-        "signature": "ed25519:Jg40uhlsiWOSsmtdXGgWLpqv3mjyWneFCZGaLn6igKJXoKkLcGnON03c2K9e6xAuP8DtTuiWm8dXkTGdSKnKBg=="
+        "signature": "ed25519:PRwnPP8UkI0hRJE6yMREXTPlVPbmFdr2wYWWZCvDm4f7Kmre5jCwBGewrzpUWhner8WqxjoeX6B4k7o3fnLWBg=="
       },
       "log_index": 2,
       "inclusion_proof": [
-        "52241ea1ce2ab77529c818a61a3a109f6dd4f7cfafe834f472ec1aa5e5dd79c2",
-        "c85a0fba75b075edc148a26b7b18429ca090077c1d853d08c823dff409c65904",
-        "3e4be19eb4bd91d0cf4d29ad6904265e3d64777f09297e56cf74b9134c59a956"
+        "bc8a88bb880cd302ab395eb26a5cb0cdbe5bde3527689e57832f223565c19f77",
+        "bb4746c3a69f3a303aac0a12e0227a6dae0a8df716604c27c648c693aaa8eea1",
+        "fb800a5dece2ff5bb0d532677809d601201a3248e0f3692caa3913e6d16042da"
       ]
     },
     {
@@ -127,7 +127,7 @@
         "outcome": "success",
         "actor": {
           "identity": "agent:enrichment/v2.1.3",
-          "cert_fingerprint": "sha256:cf856ddf0b4c42d4065b123d224afac0b4da6a56c09afc8ef5947c8ddcf3acfa",
+          "cert_fingerprint": "sha256:2e5f3b7e96184aae0a01b1f3c338a7be5ab34d25bfe9709a1ff1db631c27b341",
           "delegation_chain": [
             "human:jane@soma.vc",
             "role:enrichment-agents"
@@ -159,16 +159,16 @@
             "temperature": "0.7",
             "max_tokens": 4096
           },
-          "provider_request_id": "req_78011617"
+          "provider_request_id": "req_5b293abc"
         },
         "prev_attempt": "wf_8f2e/step_03/attempt_01",
-        "signature": "ed25519:tgLm+zvsUcNd7beZX2HI9DQ0RhAJmE9YOD1z8BInR3AxOK3GcJbeIh+pYZzYNk6P77v/HIuQL50ip2MK4z7OAA=="
+        "signature": "ed25519:X6+hXt2LVJlUVtFZjHLFbXgRaz0p0xk0RLEaNSNVUTtwmLwTuqI6h8G/IbycE52ksXmzL7TVyVN0mga397sxBg=="
       },
       "log_index": 3,
       "inclusion_proof": [
-        "84f2191af4249e98b7d401c35c2e21cc91252bd1544d79062ee2e560fa869ab5",
-        "c85a0fba75b075edc148a26b7b18429ca090077c1d853d08c823dff409c65904",
-        "3e4be19eb4bd91d0cf4d29ad6904265e3d64777f09297e56cf74b9134c59a956"
+        "709013445aa9e753b5ecb1bab56dc7eb12956e3d6f116e927d62fc0548da86fd",
+        "bb4746c3a69f3a303aac0a12e0227a6dae0a8df716604c27c648c693aaa8eea1",
+        "fb800a5dece2ff5bb0d532677809d601201a3248e0f3692caa3913e6d16042da"
       ]
     },
     {
@@ -180,7 +180,7 @@
         "outcome": "success",
         "actor": {
           "identity": "agent:memo-writer/v2.3.1",
-          "cert_fingerprint": "sha256:5627de2befeb591caee1648b3bb48257b73e4b01e19eb3789e19e9b2824a2c73",
+          "cert_fingerprint": "sha256:6acbeb8b798d73030f718e33c97c29139d9dff832660aabc4452b42a06a6403a",
           "delegation_chain": [
             "human:jane@soma.vc",
             "role:memo-agents"
@@ -212,15 +212,15 @@
             "temperature": "0.4",
             "max_tokens": 8192
           },
-          "provider_request_id": "req_ac6a22c5"
+          "provider_request_id": "req_f9154652"
         },
-        "signature": "ed25519:Q/Kqe598gdKGQoFJEv1A6JDu3TjHn99g+kFi3IM3Mn/BYIv6+1Gu9e7ySL2+RnHDiP6T/xAM8UzSLvNTCvh4CA=="
+        "signature": "ed25519:gMZ2JdGeRRDv4qOI8Rr28dzulUfqfy/AUS8DAmW+hUNVOS4E51u9L3cvFM028OLUhWPEw5N5WA7A8HGMb2d2AA=="
       },
       "log_index": 4,
       "inclusion_proof": [
-        "98217c750800be7d50ee2aa8a194609b0827e34fc5be85398159f7f5a59e7e68",
-        "480c3f60faf4eecd8bb2bd1c42430c787e6145390274c17a14d3063e43480ff2",
-        "76a90e768926ad7c8ba3fe61b77f6461f540f1a1479b0c8197f74941da3c8c26"
+        "705f09721fd6df62a71961ce1adea1f74a5a39df7185a7c2024baacaf7ed4bd8",
+        "6bd02b07426854b0c19303951edb059511349830ef2658f1f394a5c5f9472348",
+        "8a60e28d6920207c78ffaddcb181e87add1bab3ed33a1f0cf8f29773a9aeb109"
       ]
     },
     {
@@ -232,7 +232,7 @@
         "outcome": "success",
         "actor": {
           "identity": "human:jane@soma.vc",
-          "cert_fingerprint": "sha256:7b9e0987feaf1743b95d5c28c34e6750149d6dc38d92deaddb966f0ef317073b",
+          "cert_fingerprint": "sha256:23945354e5bcf824137a27fa5376f8c0f21b34be691046338e4835a8673ef68a",
           "delegation_chain": []
         },
         "inputs": [
@@ -249,13 +249,13 @@
           "started": "2026-07-08T09:00:11.000Z",
           "completed": "2026-07-08T09:00:12.000Z"
         },
-        "signature": "ed25519:sHNfu8J8eXdqhOW5ztjmQVZNfsnrq4N2vjnnWivmy4S32hZye/kX8K/oDKCBFDifIAVcIN5+e6HIXYU2UsaTCg=="
+        "signature": "ed25519:BFJzU2FzalEthOO+nI6M1H9bXjWRvRkYxxyYfbgSWns8+Z4XtQ0UF6QCsCDjXKm6yrBZ7v8yl0+kJsrw7La9CA=="
       },
       "log_index": 5,
       "inclusion_proof": [
-        "48ad2e2d1a62c2f088eced51bbc212b47ae501b9c8c65dc5799ba6db5f151e40",
-        "480c3f60faf4eecd8bb2bd1c42430c787e6145390274c17a14d3063e43480ff2",
-        "76a90e768926ad7c8ba3fe61b77f6461f540f1a1479b0c8197f74941da3c8c26"
+        "3b433692be3483e9e873d6c35f80a4da9004f21ed5dfbfd26076c5ba779dbff7",
+        "6bd02b07426854b0c19303951edb059511349830ef2658f1f394a5c5f9472348",
+        "8a60e28d6920207c78ffaddcb181e87add1bab3ed33a1f0cf8f29773a9aeb109"
       ]
     },
     {
@@ -267,7 +267,7 @@
         "outcome": "success",
         "actor": {
           "identity": "human:jane@soma.vc",
-          "cert_fingerprint": "sha256:7b9e0987feaf1743b95d5c28c34e6750149d6dc38d92deaddb966f0ef317073b",
+          "cert_fingerprint": "sha256:23945354e5bcf824137a27fa5376f8c0f21b34be691046338e4835a8673ef68a",
           "delegation_chain": []
         },
         "inputs": [
@@ -284,41 +284,41 @@
           "started": "2026-07-08T09:00:13.000Z",
           "completed": "2026-07-08T09:00:14.000Z"
         },
-        "signature": "ed25519:d6XmfDbN4/beqn/NZmkDiuAhA527lYD1XLIrDA5aRDjcF5gU4r+oZAeHg4ncvzuW2q/BqzTK3RjsKOQUMo8JDw=="
+        "signature": "ed25519:15j6KuWqCp101kiujCqDg7vKhg3bJg5bsWjUOsFXWDl3JqXi7MjZL38NZMI9WmTjQz+bU5D07gTJkQGtmbsJDg=="
       },
       "log_index": 6,
       "inclusion_proof": [
-        "f0bbc2b3f4a5d7c1f14e2b05994f9e5ec18421e910cd690f833f7a639ee42b97",
-        "76a90e768926ad7c8ba3fe61b77f6461f540f1a1479b0c8197f74941da3c8c26"
+        "44643309ac2f5d43cf1658e2799ad8ecae7497b03f9ed1ad5ef2ea2e78609ce2",
+        "8a60e28d6920207c78ffaddcb181e87add1bab3ed33a1f0cf8f29773a9aeb109"
       ]
     }
   ],
   "signed_tree_head": {
     "tree_size": 7,
-    "root": "cedfd13859475edb38a7afd40ec51b8d82c77ca3d9b49270cce7e121384e346b",
+    "root": "7b04118249bbf62419c565ac9651afe8b659b5fc5e52bef8fdeeb87c528c904a",
     "timestamp": "2026-07-08T09:00:17.000Z",
-    "log_public_key": "MCowBQYDK2VwAyEAX9WRJCRT/D/rJ6qzsZ1uzitIubNciGt/txGjXBgu7E8=",
-    "signature": "ed25519:WfENL9I9JCCqXH7JWmyYpjMCcmEiUl5bhlfD7E/XN+ELd3YwayInW1Try/wJaD0AGYuRyFaOrLSxoXlLKQQfCg=="
+    "log_public_key": "MCowBQYDK2VwAyEAoPTJf8i8xH6aJU1e+5woe0fiv4CNxo6GBhXDvNOx3nw=",
+    "signature": "ed25519:/3BPDBCrvT24aLf0vGK8uiEvnLePFyEduLIj6KzXe496BuMgHcgnFiK/712J0ww/tbuoiwA15DL+yNh7CFq3AA=="
   },
   "anchored_tree_head": {
     "tree_size": 7,
-    "root": "cedfd13859475edb38a7afd40ec51b8d82c77ca3d9b49270cce7e121384e346b",
+    "root": "7b04118249bbf62419c565ac9651afe8b659b5fc5e52bef8fdeeb87c528c904a",
     "timestamp": "2026-07-08T09:00:15.000Z",
-    "log_public_key": "MCowBQYDK2VwAyEAX9WRJCRT/D/rJ6qzsZ1uzitIubNciGt/txGjXBgu7E8=",
-    "signature": "ed25519:WsCJKa8UTQzVbMiHaGi6Hw20o2q3LgN0F77anqwCcZgA/35DPIYK6Cfy2bU9m6/G3IxsUqz5XEzCKP5cR+P8AQ=="
+    "log_public_key": "MCowBQYDK2VwAyEAoPTJf8i8xH6aJU1e+5woe0fiv4CNxo6GBhXDvNOx3nw=",
+    "signature": "ed25519:tq5clmhf55yvpgjlI/u9G9cIc/e1ffc2jtArFfNzoQN7OAKrQpiLkYkH0rgKvpW1xku2KL3kFf2HgibvqWTXDg=="
   },
   "anchor_receipt": {
     "tree_size": 7,
-    "root": "cedfd13859475edb38a7afd40ec51b8d82c77ca3d9b49270cce7e121384e346b",
+    "root": "7b04118249bbf62419c565ac9651afe8b659b5fc5e52bef8fdeeb87c528c904a",
     "anchored_at": "2026-07-08T09:00:16.000Z",
     "tsa": "tsa:external-notary",
-    "signature": "ed25519:x4kozvoUZ9wXUNimo76qFIlq1wihVJLy0BkupEhzP9p9MUsUaYyg0GQj5S4aPtc1MuJsaiCP7sf6wxebozyJBQ=="
+    "signature": "ed25519:kRcr6TxtajMpY9g8UUrH8tIJyv9+eqX1pORSPaznO/bIEYwDskDMP7OIO4XtTAJDcdDO6yUAKFxKHec6eaDHCQ=="
   },
   "consistency_proof": [],
   "certificates": [
     {
       "subject": "agent:sourcing/v1.4.0",
-      "public_key": "MCowBQYDK2VwAyEA0rz43JKyxmdF7V7HMR3NiuDkbqB+FTZWZmN+15Wl7LE=",
+      "public_key": "MCowBQYDK2VwAyEAGT78KrPdW7YEfIL3TNw5fuVTI9jcq+XdsiC38KFd670=",
       "delegation_chain": [
         "human:jane@soma.vc",
         "role:sourcing-agents"
@@ -326,11 +326,11 @@
       "not_before": "2026-07-08T09:00:00.000Z",
       "not_after": "2026-07-08T17:00:00.000Z",
       "issuer": "ca:soma-org",
-      "signature": "ed25519:8gK+TgRLMZbcVNr7mDy7qaeKcWK9sppcNT1VFJgJ8DjaEB28E2GKZyVA6GnefCchSpy2MHl/VcuZLFqHj5iSDA=="
+      "signature": "ed25519:wFwsiABmqGANqj5M/+oGmHWJ1WZM0byxvwInsYPg9tzW2YSEB+Xf66IMRW4tO4LD/X3F7ublX5276PUNBSWHAg=="
     },
     {
       "subject": "agent:enrichment/v2.1.3",
-      "public_key": "MCowBQYDK2VwAyEAJzv1TSG4Xf5OjRDa0loyrIXuIM7FsV6nxwW4+FF6Jr4=",
+      "public_key": "MCowBQYDK2VwAyEA6/lQ1+2VJgOl7QX5AikMRtO6u/suUdCtvNY866GZzV8=",
       "delegation_chain": [
         "human:jane@soma.vc",
         "role:enrichment-agents"
@@ -338,11 +338,11 @@
       "not_before": "2026-07-08T09:00:00.000Z",
       "not_after": "2026-07-08T17:00:00.000Z",
       "issuer": "ca:soma-org",
-      "signature": "ed25519:eeXPohrZ/Qd7T5z6phMYfLkemauGbY9wedzh+/ljfMwDWsvTI7LlY4ie1Xe07PMFdqe1CypY7RSBTYVI+msnBA=="
+      "signature": "ed25519:/qIdTrfK2mV1SyIndJgeRCpkJMJ3TI5yrM8ueA5DlubZzq5dYVTshk4F1Fx9kr+xH/s/Ht6I6PsmOg2v2WKmCA=="
     },
     {
       "subject": "agent:memo-writer/v2.3.1",
-      "public_key": "MCowBQYDK2VwAyEAXCLPG+mEKQenhdbFrg7+xO1cmK0y/wlyf8vx2qPcP6s=",
+      "public_key": "MCowBQYDK2VwAyEAQfZcGCPNVp/q5VuYIIqQwfmNbi7QdrMULH6e4o4j3ME=",
       "delegation_chain": [
         "human:jane@soma.vc",
         "role:memo-agents"
@@ -350,16 +350,16 @@
       "not_before": "2026-07-08T09:00:00.000Z",
       "not_after": "2026-07-08T17:00:00.000Z",
       "issuer": "ca:soma-org",
-      "signature": "ed25519:ZwGkFN09Vz2ofHyM2kt1eyjNBdOIrwFZzYMYn5xavPj1ZW1C6JbEELFz+HpbWGCoetrFG55xd5j9/93IUSqfCA=="
+      "signature": "ed25519:b40lnG2GqyakTa9yU9iKq8TKabeHbzDO5cE7dVfdcnkasUTGSsMVUeyMpSZsW4EMC+E3i7rFor23oqFkTFj/CQ=="
     },
     {
       "subject": "human:jane@soma.vc",
-      "public_key": "MCowBQYDK2VwAyEANnjZgf5uH70qJMVVOLV8zg5pQB4ZptEgSoivSWbLdqU=",
+      "public_key": "MCowBQYDK2VwAyEAg1TtCXfOJxnuZhtUORU1dt1Slfql4PuAICuK2s2fYLU=",
       "delegation_chain": [],
       "not_before": "2026-07-08T09:00:00.000Z",
       "not_after": "2026-07-08T17:00:00.000Z",
       "issuer": "ca:soma-org",
-      "signature": "ed25519:ZIQ0tMv4rmQxVlCSBDwr7F8Qvckl/+ckTopxaZyTqFfO3TdY52IHdN2mVfYlswI+t+/pTvq/FxF0n2mpRU/rDg=="
+      "signature": "ed25519:IOkSm0Mfg9evpUHlXqEj2MfckKHmk2FvjeQKuiN41czygZu/t7++l13/LFqQ/fJWTLCr5O7rFe3lipWQat0pDA=="
     }
   ],
   "artifacts": {
