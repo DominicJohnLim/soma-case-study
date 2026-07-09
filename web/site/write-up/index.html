@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Write-up - Provenance and Auditability for an Agentic Investment Platform</title>
+<meta name="description" content="Provenance and auditability for an agentic investment platform - case study write-up">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #F7F5F0; }
+  body { font-family: 'Newsreader', serif; color: #1C1A15; -webkit-font-smoothing: antialiased; }
+  a { color: #1F7A4D; text-decoration: none; }
+  a:hover { color: #145936; text-decoration: underline; }
+  ::selection { background: #DCE9DF; }
+  * { box-sizing: border-box; }
+
+  .doc { max-width: 720px; margin: 0 auto; }
+  .doc h1 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 46px; line-height: 1.06; letter-spacing: -0.015em; margin: 0 0 22px 0; padding-top: 72px; }
+  .doc h1 + p em, .doc h1 + p { font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; line-height: 1.6; color: #6E6759; font-style: normal; }
+  .doc h2 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 29px; letter-spacing: -0.01em; margin: 0 0 18px 0; border-top: 1px solid #E1DCD0; padding-top: 40px; margin-top: 44px; }
+  .doc h3 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 22px; margin: 28px 0 12px 0; }
+  .doc p { font-size: 17.5px; line-height: 1.65; margin: 0 0 16px 0; text-wrap: pretty; }
+  .doc li { font-size: 17px; line-height: 1.6; margin: 0 0 12px 0; text-wrap: pretty; }
+  .doc ul, .doc ol { margin: 0 0 20px 0; padding: 0 0 0 24px; }
+  .doc strong { font-weight: 600; }
+  .doc code { font-family: 'IBM Plex Mono', monospace; font-size: 0.82em; background: #EFECE3; padding: 0.05em 0.35em; border-radius: 2px; }
+  .doc blockquote { margin: 0 0 16px 0; padding: 20px 26px; border-left: 3px solid #1F7A4D; background: #FCFBF7; font-size: 18.5px; line-height: 1.6; font-style: italic; }
+  .doc blockquote p { font-size: 18.5px; margin: 0; }
+  .doc pre { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.65; background: #16140F; color: #CFC9BB; padding: 18px 22px; overflow-x: auto; margin: 0 0 20px 0; }
+  .doc pre code { background: none; padding: 0; font-size: 1em; color: inherit; }
+  .doc table { border-collapse: collapse; width: 100%; font-family: 'IBM Plex Sans', sans-serif; font-size: 13.5px; line-height: 1.5; background: #FCFBF7; border: 1px solid #1C1A15; margin: 0 0 20px 0; }
+  .doc th { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.07em; color: #6E6759; font-weight: 400; text-align: left; padding: 9px 16px; border-bottom: 1px solid #1C1A15; }
+  .doc td { padding: 11px 16px; border-bottom: 1px solid #E1DCD0; vertical-align: top; }
+  .doc tr:last-child td { border-bottom: none; }
+  .doc hr { border: none; border-top: 1px solid #1C1A15; margin: 32px 0 20px 0; }
+  .doc em { font-style: italic; }
+
+  @media (max-width: 640px) {
+    .doc h1 { font-size: 34px; padding-top: 48px; }
+    .doc h2 { font-size: 25px; }
+    .doc .table-wrap { overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: #F7F5F0;">
+<div style="max-width: 1024px; margin: 0 auto; padding: 0 32px 96px 32px;">
+
+  <header style="display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 26px 0 22px 0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Sans', sans-serif;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; font-weight: 500;">PROVENANCE KERNEL <span style="color: #6E6759; font-weight: 400;">/ write-up</span></div>
+    <nav style="display: flex; gap: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">
+      <a href="/" style="color: #1C1A15;">&larr; dashboard</a>
+      <a href="/bundle.json" download style="color: #1C1A15;">bundle.json</a>
+    </nav>
+  </header>
+
+  <article class="doc">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.07em; color: #6E6759; padding-top: 72px; margin-bottom: -52px;">SYSTEM DESIGN CASE STUDY &middot; SUBMISSION</div>
+<!--WRITEUP-->
+    <div style="border-top: 1px solid #1C1A15; margin-top: 32px; padding-top: 20px;">
+      <p style="font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.6; color: #6E6759; margin: 0; text-wrap: pretty;">The prototype implements the architecture and deep dive end to end: 39 tests including four adversarial bundle scenarios, a demo that runs the memo pipeline and verifies its own history, and a standalone verifier. The <a href="/">dashboard</a> shows its real output.</p>
+    </div>
+  </article>
+
+</div>
+</div>
+</body>
+</html>

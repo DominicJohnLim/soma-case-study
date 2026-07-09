@@ -1,0 +1,373 @@
+{
+  "bundle_version": 1,
+  "target": "sha256:d209c1c1a9f78f359417c87b80feb3db07f0909fbaa96a620c970a20ea8c228a",
+  "records": [
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_01/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "api_fetch",
+        "outcome": "success",
+        "actor": {
+          "identity": "agent:sourcing/v1.4.0",
+          "cert_fingerprint": "sha256:40f47cd283b51a88588ed12fc1ccf62b787fa20edca9b5e9351d2f69941ed75f",
+          "delegation_chain": [
+            "human:jane@soma.vc",
+            "role:sourcing-agents"
+          ]
+        },
+        "inputs": [],
+        "output": {
+          "artifact": "sha256:b602d4a1c26e31e2864847b17dc0f03057080c7d6d69cb27b35dff0f393f2e71",
+          "media_type": "application/http-snapshot"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:01.000Z",
+          "completed": "2026-07-08T09:00:02.000Z"
+        },
+        "signature": "ed25519:jf2964sNRr4EeirptIjvM4vhIIFSb4Hd61rU62OTPpqtuz5mMoVgRxtobnKLB+mJ6lNra8gcZTvOjmtY470uAA=="
+      },
+      "log_index": 0,
+      "inclusion_proof": [
+        "9e8de2a1de04fa335ce4ac408b9df181cfce8efde75aae812a12ccf6b85bee5d",
+        "1d0b5a2a72e7aeb611601ff762ec11a982931179d714183ebd83c7980c64a7f9",
+        "863614f0682dbb5bffdee0403ee0333e9032d29764e36cd7ce2bd4ff77f7c070"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_02/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "api_fetch",
+        "outcome": "success",
+        "actor": {
+          "identity": "agent:sourcing/v1.4.0",
+          "cert_fingerprint": "sha256:40f47cd283b51a88588ed12fc1ccf62b787fa20edca9b5e9351d2f69941ed75f",
+          "delegation_chain": [
+            "human:jane@soma.vc",
+            "role:sourcing-agents"
+          ]
+        },
+        "inputs": [],
+        "output": {
+          "artifact": "sha256:9746df193de6704fbde7f714c0875bbb2504ba3ec759a17f0738dcc43b74dbbf",
+          "media_type": "application/http-snapshot"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:03.000Z",
+          "completed": "2026-07-08T09:00:04.000Z"
+        },
+        "signature": "ed25519:80zNLj6hK9e9H+JLPNOpJ2PUHC1icMFP8Ph8NlfbaTTrl1stAnLRxb48wom70e1D7IkzbqJFaie0ml3Y59HwBg=="
+      },
+      "log_index": 1,
+      "inclusion_proof": [
+        "6ad8c8eaac5598006f85845609d0601da585fe9c45dca88eba4716f6cd03e1b1",
+        "1d0b5a2a72e7aeb611601ff762ec11a982931179d714183ebd83c7980c64a7f9",
+        "863614f0682dbb5bffdee0403ee0333e9032d29764e36cd7ce2bd4ff77f7c070"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_03/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "llm_generate",
+        "outcome": "failure",
+        "actor": {
+          "identity": "agent:enrichment/v2.1.3",
+          "cert_fingerprint": "sha256:67b32924f7eb6c5d61eb4546d1f49569d777b6b05e2862892cb92aa002a11161",
+          "delegation_chain": [
+            "human:jane@soma.vc",
+            "role:enrichment-agents"
+          ]
+        },
+        "inputs": [
+          {
+            "artifact": "sha256:b602d4a1c26e31e2864847b17dc0f03057080c7d6d69cb27b35dff0f393f2e71",
+            "role": "news_snapshot"
+          },
+          {
+            "artifact": "sha256:9746df193de6704fbde7f714c0875bbb2504ba3ec759a17f0738dcc43b74dbbf",
+            "role": "market_data_snapshot"
+          }
+        ],
+        "output": null,
+        "timestamps": {
+          "started": "2026-07-08T09:00:05.000Z",
+          "completed": "2026-07-08T09:00:06.000Z"
+        },
+        "nondeterminism": {
+          "model": "provider/frontier-model@2026-05",
+          "prompt_template": "sha256:aef5352373bbbdc204d9d12c79aa1b7a2be951c5dde3b2fe14ff0c6185ce47ad",
+          "rendered_prompt": "sha256:63f3af0efb444c2dd114c7fa6d4cf921864b3bcf92b5544ec672fed4b49512cc",
+          "params": {
+            "temperature": "0.7",
+            "max_tokens": 4096
+          },
+          "provider_request_id": "req_ce6b9422"
+        },
+        "error": "provider timeout after 60s",
+        "signature": "ed25519:7n5vBCvNxP7NpURLPt0aeTRpT2FO8KD75DKWr3cBU7FH0jCw3gpv99wtEHwTqd18HMwD1MtBkwcBSGFmfe1VDw=="
+      },
+      "log_index": 2,
+      "inclusion_proof": [
+        "97a496d5da788dc0bec1e622335840b5e476f3d322b6a9177a767cfdff5aac7d",
+        "bb46bf505ca30c872184d4eaa012e97fc9041a6fcffe2ce360b5e976d8d35214",
+        "863614f0682dbb5bffdee0403ee0333e9032d29764e36cd7ce2bd4ff77f7c070"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_03/attempt_02",
+        "workflow_id": "wf_8f2e",
+        "action_type": "llm_generate",
+        "outcome": "success",
+        "actor": {
+          "identity": "agent:enrichment/v2.1.3",
+          "cert_fingerprint": "sha256:67b32924f7eb6c5d61eb4546d1f49569d777b6b05e2862892cb92aa002a11161",
+          "delegation_chain": [
+            "human:jane@soma.vc",
+            "role:enrichment-agents"
+          ]
+        },
+        "inputs": [
+          {
+            "artifact": "sha256:b602d4a1c26e31e2864847b17dc0f03057080c7d6d69cb27b35dff0f393f2e71",
+            "role": "news_snapshot"
+          },
+          {
+            "artifact": "sha256:9746df193de6704fbde7f714c0875bbb2504ba3ec759a17f0738dcc43b74dbbf",
+            "role": "market_data_snapshot"
+          }
+        ],
+        "output": {
+          "artifact": "sha256:72ec3951c099404e6b16476c854bfa534eaef0a17683827c7e3576765ec86729",
+          "media_type": "text/markdown"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:07.000Z",
+          "completed": "2026-07-08T09:00:08.000Z"
+        },
+        "nondeterminism": {
+          "model": "provider/frontier-model@2026-05",
+          "prompt_template": "sha256:aef5352373bbbdc204d9d12c79aa1b7a2be951c5dde3b2fe14ff0c6185ce47ad",
+          "rendered_prompt": "sha256:28b37227411f673e7e05e21d8d40f0bab2f9729f26ee8ffb46748f54dd6bc43e",
+          "params": {
+            "temperature": "0.7",
+            "max_tokens": 4096
+          },
+          "provider_request_id": "req_e81e1954"
+        },
+        "prev_attempt": "wf_8f2e/step_03/attempt_01",
+        "signature": "ed25519:0CQTmvy0ClNI3/PF03JS/GZBaSUxGSADcoNSYitqgAtUhXwOoi3ymS+SF9uzn++uDXLDBoOJIN1yCfm+hjE0DQ=="
+      },
+      "log_index": 3,
+      "inclusion_proof": [
+        "8454ba0fce284c8fe606d30907799d6c166f74059802a37c3c6ebb5e391e7ebb",
+        "bb46bf505ca30c872184d4eaa012e97fc9041a6fcffe2ce360b5e976d8d35214",
+        "863614f0682dbb5bffdee0403ee0333e9032d29764e36cd7ce2bd4ff77f7c070"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_04/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "llm_generate",
+        "outcome": "success",
+        "actor": {
+          "identity": "agent:memo-writer/v2.3.1",
+          "cert_fingerprint": "sha256:77d93c235ae20c93aeffae3ba6a9cc1c11fb8bddfeb3d9f7cf21039c1515a96d",
+          "delegation_chain": [
+            "human:jane@soma.vc",
+            "role:memo-agents"
+          ]
+        },
+        "inputs": [
+          {
+            "artifact": "sha256:72ec3951c099404e6b16476c854bfa534eaef0a17683827c7e3576765ec86729",
+            "role": "founder_profile"
+          },
+          {
+            "artifact": "sha256:9746df193de6704fbde7f714c0875bbb2504ba3ec759a17f0738dcc43b74dbbf",
+            "role": "market_data_snapshot"
+          }
+        ],
+        "output": {
+          "artifact": "sha256:960a0cddff2e8326c058c9ba179fded1083ba0f4ec05e85c9c187d473f1620c8",
+          "media_type": "text/markdown"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:09.000Z",
+          "completed": "2026-07-08T09:00:10.000Z"
+        },
+        "nondeterminism": {
+          "model": "provider/frontier-model@2026-05",
+          "prompt_template": "sha256:179c30a66bb9152272cb8055d8b741f292f6b9e3fef3f21be49946d4dbffc2c1",
+          "rendered_prompt": "sha256:0df2c684fb082cc4c9a4290a7ca91a6b3278b8b4dd86ee38380a0ff9b9b5312c",
+          "params": {
+            "temperature": "0.4",
+            "max_tokens": 8192
+          },
+          "provider_request_id": "req_96510caf"
+        },
+        "signature": "ed25519:arHYIihfhmetvL7NnhLTOlceUMxvAWY+oOOvP3IaKnYTopiUmwTQZSPnd019BX3XbiWRa3nHz1GBMGvecqSlCw=="
+      },
+      "log_index": 4,
+      "inclusion_proof": [
+        "b64811e49d167203fb5d5d5b653f997c4d004a6b9c749224f0cd5fc900a1673c",
+        "ace09242ce2546328f7e4561d85a07d97d11e0ecf84b469acdfd36ab7a11303b",
+        "d1ee31ee56831b3ac6511c19eedb14f1c48ab345a8f439167481f75c2ba9ffe9"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_05/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "human_edit",
+        "outcome": "success",
+        "actor": {
+          "identity": "human:jane@soma.vc",
+          "cert_fingerprint": "sha256:ca39d8c6c0cfdd9871238e169e22e54a71b0efc000c1c533c85241693dd9ed4d",
+          "delegation_chain": []
+        },
+        "inputs": [
+          {
+            "artifact": "sha256:960a0cddff2e8326c058c9ba179fded1083ba0f4ec05e85c9c187d473f1620c8",
+            "role": "memo_draft"
+          }
+        ],
+        "output": {
+          "artifact": "sha256:cec7651739dcc9e1fccf28c3af7d8be9c2964a2bae14e07e6084eba97d3f3696",
+          "media_type": "text/markdown"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:11.000Z",
+          "completed": "2026-07-08T09:00:12.000Z"
+        },
+        "signature": "ed25519:ruKOR7xiZi4db0iWr/aO17FPY85y7sIeG63A4CRKc6VegtFwiGTVDcvL97GZuqi1gqXuk9RwpK9yA9a4HDiBAA=="
+      },
+      "log_index": 5,
+      "inclusion_proof": [
+        "c22eb52ecd38985578936f8367ce2b75815b1f572952068787735f9fcd5534c1",
+        "ace09242ce2546328f7e4561d85a07d97d11e0ecf84b469acdfd36ab7a11303b",
+        "d1ee31ee56831b3ac6511c19eedb14f1c48ab345a8f439167481f75c2ba9ffe9"
+      ]
+    },
+    {
+      "record": {
+        "record_version": 1,
+        "step_id": "wf_8f2e/step_06/attempt_01",
+        "workflow_id": "wf_8f2e",
+        "action_type": "human_approval",
+        "outcome": "success",
+        "actor": {
+          "identity": "human:jane@soma.vc",
+          "cert_fingerprint": "sha256:ca39d8c6c0cfdd9871238e169e22e54a71b0efc000c1c533c85241693dd9ed4d",
+          "delegation_chain": []
+        },
+        "inputs": [
+          {
+            "artifact": "sha256:cec7651739dcc9e1fccf28c3af7d8be9c2964a2bae14e07e6084eba97d3f3696",
+            "role": "approved_memo"
+          }
+        ],
+        "output": {
+          "artifact": "sha256:d209c1c1a9f78f359417c87b80feb3db07f0909fbaa96a620c970a20ea8c228a",
+          "media_type": "application/json"
+        },
+        "timestamps": {
+          "started": "2026-07-08T09:00:13.000Z",
+          "completed": "2026-07-08T09:00:14.000Z"
+        },
+        "signature": "ed25519:97KQTaFK7lbNk+624cBvP0nL5l8IX91bkIdJXy0VqceiafH0PdwsPDnhibKy4YhqRuA6dsvCakiPaEEOoL5VDg=="
+      },
+      "log_index": 6,
+      "inclusion_proof": [
+        "7d3a96abc5d7dfab4ecaa3df8b72043c7dbf7eed02f5fcd8b73bcfce615bc6b5",
+        "d1ee31ee56831b3ac6511c19eedb14f1c48ab345a8f439167481f75c2ba9ffe9"
+      ]
+    }
+  ],
+  "signed_tree_head": {
+    "tree_size": 7,
+    "root": "38609d19d1b22d3d1c33145394fd519670b84cde29714ddbc9c3f1f76ad9c802",
+    "timestamp": "2026-07-08T09:00:17.000Z",
+    "log_public_key": "MCowBQYDK2VwAyEA/5H55RQ2OmovkxAA80PakHVK78vOkYzwODkC0iEDFts=",
+    "signature": "ed25519:UFC1J5z6nFAc++rNX78AbyrRYPWydhTilhkueflrfoEsqbnWKVigimw6/U7MTsiV5bHuGsiMTqWWvuyH31ovDA=="
+  },
+  "anchored_tree_head": {
+    "tree_size": 7,
+    "root": "38609d19d1b22d3d1c33145394fd519670b84cde29714ddbc9c3f1f76ad9c802",
+    "timestamp": "2026-07-08T09:00:15.000Z",
+    "log_public_key": "MCowBQYDK2VwAyEA/5H55RQ2OmovkxAA80PakHVK78vOkYzwODkC0iEDFts=",
+    "signature": "ed25519:xziwW3UeqKeG4SXFXlPNzGCwv8eAfVLFCq8zckExQEQq5VPWt1iqYDNsKWAsYN714leVBgUkjFsaghzbT3xGCw=="
+  },
+  "anchor_receipt": {
+    "tree_size": 7,
+    "root": "38609d19d1b22d3d1c33145394fd519670b84cde29714ddbc9c3f1f76ad9c802",
+    "anchored_at": "2026-07-08T09:00:16.000Z",
+    "tsa": "tsa:external-notary",
+    "signature": "ed25519:KhDzU8vv6QD5I6a8treurTphoWmiGMwuZ4748fukPLWXctogWXiGv8X+qcbLbVzSYfh5kOzAXXXlaqTjE1BzDw=="
+  },
+  "consistency_proof": [],
+  "certificates": [
+    {
+      "subject": "agent:sourcing/v1.4.0",
+      "public_key": "MCowBQYDK2VwAyEAVZ9/Mb8coRBvP36raTNKz1DKbzgUWhMMTZEyoxMefnw=",
+      "delegation_chain": [
+        "human:jane@soma.vc",
+        "role:sourcing-agents"
+      ],
+      "not_before": "2026-07-08T09:00:00.000Z",
+      "not_after": "2026-07-08T17:00:00.000Z",
+      "issuer": "ca:soma-org",
+      "signature": "ed25519:l1KO988dLCwxKeZDALgYDt3DHSrsWHP9yeqEc86kMG2O0dhVJfDutyATsNc65Wrh0ptZx/SNGiOkVi1zTyAqAA=="
+    },
+    {
+      "subject": "agent:enrichment/v2.1.3",
+      "public_key": "MCowBQYDK2VwAyEA9h1vXVPhBZrWtEl3oYcFKEdXFmI+3b/LMOq7mh/DnRE=",
+      "delegation_chain": [
+        "human:jane@soma.vc",
+        "role:enrichment-agents"
+      ],
+      "not_before": "2026-07-08T09:00:00.000Z",
+      "not_after": "2026-07-08T17:00:00.000Z",
+      "issuer": "ca:soma-org",
+      "signature": "ed25519:/d0UGeccnc1AA+GEnmeKeH1bGs70XR7eTghKLPVuPvDsxSIyZiT/MCy3NGtK1YCfxyF3CsKxanQR6AlfTjOwAQ=="
+    },
+    {
+      "subject": "agent:memo-writer/v2.3.1",
+      "public_key": "MCowBQYDK2VwAyEAmcJcguerDxAmCUAm7jbyI9+pIJ+i8z/gju+tC7bZh1w=",
+      "delegation_chain": [
+        "human:jane@soma.vc",
+        "role:memo-agents"
+      ],
+      "not_before": "2026-07-08T09:00:00.000Z",
+      "not_after": "2026-07-08T17:00:00.000Z",
+      "issuer": "ca:soma-org",
+      "signature": "ed25519:3kaQ4h+iALutsNZmybYUPNI5B/FQNHmeurrRtl0OjcLUkyOWxzwreTF6Nlasbn2lsgrWLfBTy8mLlYTGBGKPDQ=="
+    },
+    {
+      "subject": "human:jane@soma.vc",
+      "public_key": "MCowBQYDK2VwAyEAbmvlPbTUQvZ26BJOrs163QxAecbTZOxG2GsbZ0KLYYQ=",
+      "delegation_chain": [],
+      "not_before": "2026-07-08T09:00:00.000Z",
+      "not_after": "2026-07-08T17:00:00.000Z",
+      "issuer": "ca:soma-org",
+      "signature": "ed25519:+h9vTtZvHNuCnUi4tL4ABXK9a/9HjYutLlFH0LsSCKSWRjugz1wCvp0APCvzTzzgtEZ1i3kB34mAJD5TvIliCw=="
+    }
+  ],
+  "artifacts": {
+    "sha256:b602d4a1c26e31e2864847b17dc0f03057080c7d6d69cb27b35dff0f393f2e71": "U05BUFNIT1QgaHR0cHM6Ly90ZWNobmV3cy5leGFtcGxlL2NvbXBhbnl4LXNlcmllcy1hIGZldGNoZWQgMjAyNi0wNy0wOFQwOTowMFoKQ29tcGFueSBYIHJhaXNlcyAkMTJNIFNlcmllcyBBIHRvIGF1dG9tYXRlIGZyZWlnaHQgYnJva2VyYWdlLi4u",
+    "sha256:9746df193de6704fbde7f714c0875bbb2504ba3ec759a17f0738dcc43b74dbbf": "U05BUFNIT1QgaHR0cHM6Ly9maW5hcGkuZXhhbXBsZS92Mi9jb21wYW5pZXMvY29tcGFueS14IGZldGNoZWQgMjAyNi0wNy0wOFQwOTowMFoKeyJhcnJfdXNkIjogMTgwMDAwMCwgImdyb3d0aF95b3kiOiAzLjEsICJidXJuX21vbnRobHlfdXNkIjogMjUwMDAwfQ==",
+    "sha256:72ec3951c099404e6b16476c854bfa534eaef0a17683827c7e3576765ec86729": "IyBGb3VuZGVyIHByb2ZpbGU6IENvbXBhbnkgWApDRU8gcHJldmlvdXNseSBzY2FsZWQgbG9naXN0aWNzIG9wcyBhdCBCaWdGcmVpZ2h0OyB0ZWNobmljYWwgY29mb3VuZGVyIGV4LW1hcHBpbmcgaW5mcmEuIEFSUiAkMS44TSBncm93aW5nIDMuMXggWW9ZLg==",
+    "sha256:960a0cddff2e8326c058c9ba179fded1083ba0f4ec05e85c9c187d473f1620c8": "IyBJbnZlc3RtZW50IG1lbW86IENvbXBhbnkgWApUaGVzaXM6IHZlcnRpY2FsIEFJIGZvciBmcmVpZ2h0IGJyb2tlcmFnZS4gU3Ryb25nIGZvdW5kZXItbWFya2V0IGZpdCwgJDEuOE0gQVJSIGF0IDMuMXguIFJlY29tbWVuZCBwcm9jZWVkaW5nIHRvIElDLg==",
+    "sha256:cec7651739dcc9e1fccf28c3af7d8be9c2964a2bae14e07e6084eba97d3f3696": "IyBJbnZlc3RtZW50IG1lbW86IENvbXBhbnkgWCAocGFydG5lci1yZXZpZXdlZCkKVGhlc2lzOiB2ZXJ0aWNhbCBBSSBmb3IgZnJlaWdodCBicm9rZXJhZ2UuIFN0cm9uZyBmb3VuZGVyLW1hcmtldCBmaXQsICQxLjhNIEFSUiBhdCAzLjF4LiBEaWxpZ2VuY2UgY2F2ZWF0OiB2ZXJpZnkgQVJSIGNvbXBvc2l0aW9uIC0gc29tZSByZXZlbnVlIG1heSBiZSBvbmUtdGltZSBpbnRlZ3JhdGlvbiBmZWVzLiBQcm9jZWVkIHRvIElDLg==",
+    "sha256:d209c1c1a9f78f359417c87b80feb3db07f0909fbaa96a620c970a20ea8c228a": "eyJkZWNpc2lvbiI6ImludmVzdCIsImNvbXBhbnkiOiJDb21wYW55IFgiLCJhcHByb3ZlZF9hcnRpZmFjdCI6InNoYTI1NjpjZWM3NjUxNzM5ZGNjOWUxZmNjZjI4YzNhZjdkOGJlOWMyOTY0YTJiYWUxNGUwN2U2MDg0ZWJhOTdkM2YzNjk2IiwiYXBwcm92ZXIiOiJodW1hbjpqYW5lQHNvbWEudmMifQ=="
+  }
+}
