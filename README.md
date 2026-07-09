@@ -9,7 +9,7 @@ trust core.
 ## Deliverables
 
 The three deliverables (high-level architecture, deep dive, tradeoffs) are in
-the write-up: [`web/content/write-up.md`](web/content/write-up.md), which is
+the write-up: [`web/content/write-up.md`](https://soma-capital-case-study.vercel.app/), which is
 also served as a styled page with the diagrams inline.
 
 Backing it up:

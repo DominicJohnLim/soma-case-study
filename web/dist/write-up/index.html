@@ -78,7 +78,7 @@
   <header class="topbar">
     <div class="brand">DOMINIC LIM <span>/ soma capital case study</span></div>
     <nav>
-      <a href="/">dashboard</a>
+      <a href="#sec-1">architecture</a>
       <a href="#sec-2">deep dive</a>
       <a href="#sec-3">tradeoffs</a>
     </nav>
@@ -92,7 +92,7 @@
   </section>
 
   <main class="article">
-<p><em>A written submission with a runnable prototype of the trust core behind it (about 2,000 lines of TypeScript, no runtime dependencies, 39 tests). The <a href="/">dashboard</a> runs it live, and technical claims cite a <code>file:line</code>. You should be able to read this straight through without opening any of it.</em></p>
+<p><em>A written submission with a runnable prototype of the trust core behind it (about 2,000 lines of TypeScript, no runtime dependencies, 39 tests). Technical claims cite a <code>file:line</code>. You should be able to read this straight through without opening any of it.</em></p>
 <h2 id="approach">Approach</h2>
 <p>The design turns on one decision: you can't make an LLM deterministic, so don't try. Make the <em>record</em> of what it did deterministic instead. Let the model be as unpredictable as it wants inside a step. The moment anything crosses the step's edge (the inputs it read, the output it produced, who ran it, when) capture it exactly, sign it, and append it to a log that can't be rewritten. The unpredictable part stays sealed inside the step; everything observable from outside is exact, attributed, and permanent.</p>
 <p>"Can't be rewritten" is the load-bearing phrase. An ordinary database is append-only by <em>policy</em>, so anyone with admin access can edit a row and cover their tracks. This design is append-only by <em>math</em>: records are chained by hash so that changing any past record changes one fingerprint at the top, and that top fingerprint is signed by an outside party on a schedule. That turns "trust us, we didn't touch it" into "here's the proof, check it yourself."</p>
