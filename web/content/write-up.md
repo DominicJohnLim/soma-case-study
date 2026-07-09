@@ -1,111 +1,590 @@
-# Provenance and Auditability for an Agentic Investment Platform
+# Dominic Soma Cap Case Study
 
-*System design case study. A working prototype of the trust core accompanies this document (~2,000 lines of TypeScript, zero runtime dependencies, 39 tests); implementation claims cite `file:line`, and the [dashboard](/) shows its real output.*
+*A written submission with a runnable prototype of the trust core behind it (about 2,000 lines of TypeScript, no runtime dependencies, 39 tests). The [dashboard](/) runs it live, and technical claims cite a `file:line`. You should be able to read this straight through without opening any of it.*
 
-## 1. Problem and framing
+## Approach
 
-Soma's agents are non-deterministic: they hallucinate, vary between runs, and depend on external APIs we do not control. Yet LPs, partners, and regulators need to know, for any artifact: who produced it, from which inputs, and whether it has been modified. One organizing decision drives the design:
+The design turns on one decision: you can't make an LLM deterministic, so don't try. Make the *record* of what it did deterministic instead. Let the model be as unpredictable as it wants inside a step. The moment anything crosses the step's edge (the inputs it read, the output it produced, who ran it, when) capture it exactly, sign it, and append it to a log that can't be rewritten. The unpredictable part stays sealed inside the step; everything observable from outside is exact, attributed, and permanent.
 
-> We cannot make LLM steps deterministic, so we don't try. Instead, we make the *record* of every step deterministic, signed, and tamper-evident: hash the inputs, hash the output, sign the pair with the actor's identity, and append it to a log nobody - including us - can rewrite.
+"Can't be rewritten" is the load-bearing phrase. An ordinary database is append-only by *policy*, so anyone with admin access can edit a row and cover their tracks. This design is append-only by *math*: records are chained by hash so that changing any past record changes one fingerprint at the top, and that top fingerprint is signed by an outside party on a schedule. That turns "trust us, we didn't touch it" into "here's the proof, check it yourself."
 
-Non-determinism stays contained inside the step; everything observable at the boundary is exact, attributable, and permanent.
+Everything below follows from that one move, so it's worth being explicit about the kind of problem it leaves. At the brief's two-year projection of 50,000 actions a day, the system takes under one write per second, so raw throughput is never the constraint. The hard part is trust, and specifically distributed-systems trust: the guarantee has to survive a compromised server, a dishonest insider, and an auditor who has no reason to believe anything Soma says. The whole architecture is organized around surviving those three.
 
-**Threat model.** Defends against: silent modification of artifacts (including by administrators); misattribution; history rewriting; impersonation of agents or humans. Does not defend against: false source data faithfully recorded, fluent-but-wrong LLM output, or an attacker holding a live signing endpoint during its validity window (section 6).
+<figure data-screen-label="Diagram 0 — hero" style="margin: 0 0 46px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">DIAGRAM 0</span>
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 18px;">The core idea &mdash; we can&rsquo;t control the inside, so we lock down the edges.</span>
+    </div>
+    <div style="padding: 42px 44px 36px;">
+      <!-- envelope -->
+      <div style="position: relative; border: 2px solid #1F7A4D; background: #EAF2EC; padding: 34px 32px 24px;">
+        <div style="position: absolute; top: -12px; left: 26px; background: #1F7A4D; color: #F7F5F0; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.09em; padding: 3px 12px; display: inline-flex; align-items: center; gap: 8px;"><svg width="12" height="12" viewBox="0 0 13 13" style="flex: none;"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="#F7F5F0" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="#F7F5F0" stroke-width="1.4"></path></svg>SIGNED RECORD ENVELOPE</div>
+        <!-- flow row -->
+        <div style="display: flex; align-items: center; justify-content: center; gap: 20px;">
+          <!-- inputs -->
+          <div style="display: flex; flex-direction: column; gap: 11px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #6E6759; margin-bottom: 1px;">INPUTS &rarr;</div>
+            <div style="width: 168px; background: #FCFBF7; border: 1px solid #D5CFC1; padding: 9px 11px;">
+              <div style="font-size: 13px; color: #1C1A15; margin-bottom: 6px;">news snapshot</div>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 6px;"><svg width="9" height="11" viewBox="0 0 11 13" style="flex: none;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>a11f&hellip;</span>
+            </div>
+            <div style="width: 168px; background: #FCFBF7; border: 1px solid #D5CFC1; padding: 9px 11px;">
+              <div style="font-size: 13px; color: #1C1A15; margin-bottom: 6px;">financials</div>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 6px;"><svg width="9" height="11" viewBox="0 0 11 13" style="flex: none;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>b8c0&hellip;</span>
+            </div>
+            <div style="width: 168px; background: #FCFBF7; border: 1px solid #D5CFC1; padding: 9px 11px;">
+              <div style="font-size: 13px; color: #1C1A15; margin-bottom: 6px;">founder profile</div>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 6px;"><svg width="9" height="11" viewBox="0 0 11 13" style="flex: none;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>3d2e&hellip;</span>
+            </div>
+          </div>
+          <span style="color: #B0A894; font-size: 26px; line-height: 1;">&rarr;</span>
+          <!-- black box -->
+          <div style="width: 236px; background: #16140F; border: 2px solid #B23A2B; padding: 26px 22px; text-align: center; position: relative; overflow: hidden;">
+            <div style="position: absolute; inset: 0; background-image: repeating-linear-gradient(45deg, rgba(178,58,43,0.10) 0 8px, transparent 8px 16px); pointer-events: none;"></div>
+            <div style="position: relative;">
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.1em; color: #E08072; margin-bottom: 14px;">UNTRUSTED BY NATURE</div>
+              <div style="font-family: 'Newsreader', serif; font-size: 26px; color: #F7F5F0; line-height: 1.05;">AI step</div>
+              <div style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: #8A8474; margin-top: 4px;">(non-deterministic)</div>
+              <div style="font-family: 'Newsreader', serif; font-size: 60px; color: #B23A2B; line-height: 0.9; margin: 10px 0 6px; opacity: 0.85;">?</div>
+              <div style="font-size: 11.5px; color: #B7B1A3; line-height: 1.4;">we can&rsquo;t see or reproduce<br>what happens in here</div>
+            </div>
+          </div>
+          <span style="color: #B0A894; font-size: 26px; line-height: 1;">&rarr;</span>
+          <!-- output -->
+          <div style="display: flex; flex-direction: column; gap: 6px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #6E6759;">&rarr; OUTPUT</div>
+            <div style="width: 168px; background: #FCFBF7; border: 1px solid #1C1A15; padding: 11px 12px;">
+              <div style="font-size: 13px; color: #1C1A15; margin-bottom: 7px;">memo draft</div>
+              <span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 6px;"><svg width="9" height="11" viewBox="0 0 11 13" style="flex: none;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>77e0&hellip;</span>
+            </div>
+          </div>
+        </div>
+        <!-- captured edges -->
+        <div style="margin-top: 26px; border-top: 1px dashed #9CC4AA; padding-top: 16px; display: flex; flex-wrap: wrap; gap: 12px 30px; align-items: center;">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #1F7A4D;">CAPTURED AT THE EDGES:</span>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #1C1A15;"><svg width="12" height="12" viewBox="0 0 13 13" style="flex: none; color: #1F7A4D;"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="currentColor" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg>actor <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6759;">agent:memo-writer/v2.3.1</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #1C1A15;"><svg width="10" height="12" viewBox="0 0 11 13" style="flex: none; color: #1F7A4D;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>inputs &amp; output</span>
+          <span style="font-size: 12.5px; color: #1C1A15;">timestamps <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6759;">started / completed</span></span>
+          <span style="display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: #1C1A15;"><svg width="12" height="12" viewBox="0 0 13 13" style="flex: none; color: #1F7A4D;"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="currentColor" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg>signature <span style="font-size: 11px; color: #6E6759;">(proves who signed it)</span></span>
+        </div>
+      </div>
+      <!-- drop into log -->
+      <div style="display: flex; flex-direction: column; align-items: center; margin-top: 22px;">
+        <span style="color: #1F7A4D; font-size: 26px; line-height: 1;">&darr;</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1F7A4D; margin: 2px 0 16px;">append to log</span>
+        <div style="display: flex; align-items: center; gap: 34px;">
+          <!-- log stack -->
+          <div style="display: flex; flex-direction: column; gap: 4px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.08em; color: #1F7A4D; margin-bottom: 3px;">APPEND-ONLY LOG</div>
+            <div style="width: 260px; height: 15px; background: #D8E7DD; border: 1px solid #1F7A4D;"></div>
+            <div style="width: 260px; height: 15px; background: #D8E7DD; border: 1px solid #1F7A4D;"></div>
+            <div style="width: 260px; height: 15px; background: #2FA968; border: 1px solid #1F7A4D;"></div>
+          </div>
+          <span style="color: #1F7A4D; font-size: 22px;">&rarr;</span>
+          <!-- notary -->
+          <div style="display: flex; align-items: center; gap: 12px;">
+            <div style="width: 52px; height: 52px; border-radius: 50%; border: 2px solid #1F7A4D; background: #EAF2EC; display: flex; align-items: center; justify-content: center; color: #1F7A4D; flex: none;"><svg width="24" height="24" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="currentColor" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="currentColor" stroke-width="1.4"></path></svg></div>
+            <div style="font-size: 13px; line-height: 1.35; color: #1C1A15;">signed by an<br><strong style="font-weight: 600;">outside notary</strong></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <div style="padding: 16px 24px; border-top: 1px solid #1C1A15; background: #16140F;">
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; color: #F7F5F0;">&ldquo;The inside is unpredictable. The edges are exact, signed, and permanent.&rdquo;</span>
+    </div>
+  </figure>
 
-**Scale reality.** 50,000 actions/day in two years is under one write per second, with artifacts of 100 B - 50 KB. This is a trust problem, not a throughput problem: boring storage (one ordered log, one Postgres, object storage), with the complexity budget spent on verifiability. The prototype's tests follow suit - Merkle proofs exercised exhaustively at small scale (`impl/test/tlog.test.ts:22,50`) rather than benchmarked.
+## 1. High-Level Architecture
 
-## 2. Architecture
+### The components fall out of the requirements
 
-Three trust zones: untrusted external APIs; a semi-trusted execution zone (orchestrator, agents, identity service); and the trust root (transparency log plus external anchor). Storage and query layers are derived and rebuildable. Six components:
+I didn't start by choosing components. I started by asking what the system has to be able to prove, and the pieces followed from that.
 
-1. **Content-addressed store (CAS).** Every artifact and input snapshot is stored under the SHA-256 of its bytes. The hash is the identity, so "has this been modified?" is definitionally answerable; the prototype re-verifies on every read, so storage-layer tampering cannot silently return altered bytes (`impl/src/cas.ts:34-41`).
+To answer *has this been modified*, an artifact can't be identified by a name that a person can later point at different bytes. It has to be identified by its bytes. That forces the first component, a **content-addressed store**, where an artifact's address is a fingerprint of its content, so a modified artifact is simply a different artifact with a different address.
 
-2. **Signed provenance records.** One per step *attempt* - the envelope. Section 3 is its deep dive.
+To answer *who made this, from what, and when*, every step needs a small **record** holding its actor, its inputs, and its output, signed so the claim is attributable.
 
-3. **Transparency log - the trust root.** Records append to a Merkle tree in strict sequence, yielding inclusion proofs ("this record is in the history") and consistency proofs ("today's history extends yesterday's"). Hourly, the signed root is anchored to an external RFC 3161 timestamp authority; after anchoring, insider rewrites are mathematically evident, not just policy-forbidden. Same construction as Certificate Transparency (`impl/src/tlog.ts:182,217`).
+To make *has this been modified* hold for the records too, not only the artifacts, those records can't sit in a plain database where an administrator can edit a row. They need to live in something append-only by construction and checkable from the outside, which is the **transparency log**. And because even the log's own operator could rewrite it, an **external anchor** periodically pins the log's state somewhere Soma doesn't control.
 
-4. **Durable workflow orchestrator.** Temporal-style: checkpointed state, idempotency keys for deterministic steps, recorded outputs reused - never blindly re-executed - for non-deterministic ones; each retry attempt emits its own record. The engine is purchasable infrastructure, deliberately not in the prototype; the property it must preserve is implemented: a failed attempt is a first-class record linked from its successor, and hiding it breaks verification (`impl/test/verify.test.ts:90`).
+For records to be signed, actors need cryptographic identities and keys, which is the **identity service**. Agents also fail, time out, and retry across runs that can last days, and none of that can be allowed to corrupt the record, which is the job of a **durable workflow orchestrator**. Finally, answering an auditor's question means walking the records back from a decision and handing over something checkable, which is the **audit layer**.
 
-5. **Identity and keys.** An org CA issues short-lived certificates (hours) to agent instances (`impl/src/identity.ts:82-94`); agent certs must carry a delegation chain terminating at a human or verification rejects (`impl/src/identity.ts:136`). Humans use SSO plus hardware-backed keys. Rotation is automatic by expiry; no long-lived agent secrets exist; issued certs are logged, so emergency denylisting is available.
+Six components, each one forced by a requirement rather than chosen for its own sake. The rest of this section is how they relate.
 
-6. **Audit layer.** A graph projection consumed from the log - derived, and rebuildable by replay if ever distrusted. Answers ship as proof bundles verifiable outside our infrastructure (3.3).
+### Trust boundaries
 
-**One memo, end to end** (the prototype's demo): sourcing snapshots a news article and a financials response with fetch records carrying no inputs - the provenance frontier. An enrichment agent produces a founder profile; its first attempt fails and both attempts stay in history. The memo agent consumes the profile; a partner's edit is a *new* artifact citing the prior memo under a human identity - edits never overwrite; the approval record pins the hash of the exact bytes approved (`impl/src/demo.ts:270-280`).
+The most important question in a design like this is what you are allowed to trust, because a guarantee is only ever as strong as the weakest thing it depends on. The answer here is drawn as three rings.
 
-## 3. Deep dive: the record, the DAG, and the log
+<figure data-screen-label="Diagram 1 — architecture" style="margin: 0 0 46px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">DIAGRAM 1</span>
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 18px;">Trust flows inward &mdash; only the small inner core is relied on.</span>
+    </div>
+    <div style="padding: 40px 44px 34px; position: relative;">
+      <div style="display: flex; gap: 30px; align-items: stretch;">
+        <!-- inward arrow rail -->
+        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; flex: none; width: 34px;">
+          <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.1em; color: #6E6759; writing-mode: vertical-rl; transform: rotate(180deg); margin-bottom: 12px;">TRUST FLOWS INWARD</span>
+          <span style="color: #1F7A4D; font-size: 28px;">&darr;</span>
+        </div>
+        <div style="flex: 1;">
+          <!-- OUTER -->
+          <div style="border: 1.5px solid #D8B3AB; background: #F7EDEA; padding: 16px 18px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #8F2E22; margin-bottom: 12px; font-weight: 500;">UNTRUSTED &mdash; THE OUTSIDE WORLD</div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #D8B3AB; padding: 11px 13px; font-size: 13px;">News &amp; web sources</div>
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #D8B3AB; padding: 11px 13px; font-size: 13px;">Financial data APIs</div>
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #D8B3AB; padding: 11px 13px; font-size: 13px;">LLM providers</div>
+            </div>
+          </div>
+          <!-- boundary label -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 7px 0;">
+            <span style="flex: 1; height: 1px; background: #D5CFC1;"></span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #1F7A4D;">&darr; snapshot raw bytes on the way in</span>
+            <span style="flex: 1; height: 1px; background: #D5CFC1;"></span>
+          </div>
+          <!-- MIDDLE -->
+          <div style="border: 1.5px solid #E0CFA6; background: #F6F0E1; padding: 16px 18px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #7A5A1C; margin-bottom: 12px; font-weight: 500;">SOMA&rsquo;S MACHINERY &mdash; SEMI-TRUSTED</div>
+            <div style="display: flex; gap: 12px; flex-wrap: wrap;">
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #E0CFA6; padding: 11px 13px; font-size: 13px;">Workflow orchestrator<br><span style="font-size: 11px; color: #6E6759;">durable execution: checkpoints, retries</span></div>
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #E0CFA6; padding: 11px 13px; font-size: 13px;">Agents<br><span style="font-size: 11px; color: #6E6759;">sourcing, enrichment, memo-writer&hellip;</span></div>
+              <div style="flex: 1; min-width: 180px; background: #FCFBF7; border: 1px solid #E0CFA6; padding: 11px 13px; font-size: 13px;">Identity service / org CA<br><span style="font-size: 11px; color: #6E6759;">issues short-lived certificates</span></div>
+            </div>
+          </div>
+          <!-- boundary label -->
+          <div style="display: flex; align-items: center; justify-content: center; gap: 10px; padding: 7px 0;">
+            <span style="flex: 1; height: 1px; background: #D5CFC1;"></span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #1F7A4D;">&darr; every record is signed, then checked against the log</span>
+            <span style="flex: 1; height: 1px; background: #D5CFC1;"></span>
+          </div>
+          <!-- INNER -->
+          <div style="position: relative; border: 2px solid #1F7A4D; background: #E7F1EA; padding: 16px 18px;">
+            <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.06em; color: #1F7A4D; margin-bottom: 12px; font-weight: 600;">TRUST ROOT</div>
+            <div style="display: flex; gap: 12px; align-items: stretch;">
+              <div style="flex: 1; background: #FCFBF7; border: 1px solid #1F7A4D; padding: 13px 14px; font-size: 13.5px; font-weight: 500;">Transparency log<br><span style="font-size: 11px; color: #6E6759; font-weight: 400;">append-only Merkle tree</span></div>
+            </div>
+          </div>
+        </div>
+        <!-- notary, half outside on the right -->
+        <div style="flex: none; width: 150px; display: flex; flex-direction: column; justify-content: flex-end;">
+          <div style="border: 2px solid #1F7A4D; background: #2FA968; color: #0E1710; padding: 13px 14px; margin-left: -40px; box-shadow: -6px 6px 0 rgba(31,122,77,0.18);">
+            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 6px;"><svg width="16" height="16" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="#0E1710" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="#0E1710" stroke-width="1.4"></path></svg><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; letter-spacing: 0.05em; font-weight: 600;">EXTERNAL</span></div>
+            <div style="font-size: 13.5px; font-weight: 600; line-height: 1.25;">Notary /<br>timestamp authority</div>
+            <div style="font-size: 11px; margin-top: 6px; line-height: 1.3;">outside Soma&rsquo;s control</div>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1F7A4D; text-align: center; margin-top: 10px; line-height: 1.4;">&uarr;<br>top hash,<br>once an hour</div>
+        </div>
+      </div>
+      <!-- storage shelf -->
+      <div style="margin-top: 26px; border-top: 1px dashed #C7C0B0; padding-top: 20px;">
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; color: #6E6759; margin-bottom: 12px;">STORAGE (a supporting shelf, not a trust ring)</div>
+        <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;">
+          <div style="border: 1px solid #D5CFC1; background: #FCFBF7; padding: 12px 13px;">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 3px;">Object store</div>
+            <div style="font-size: 11.5px; color: #6E6759; margin-bottom: 9px;">artifact bytes</div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px;">self-verifying</span>
+          </div>
+          <div style="border: 2px solid #1F7A4D; background: #EAF2EC; padding: 12px 13px;">
+            <div style="font-size: 13px; font-weight: 600; margin-bottom: 3px; color: #1F7A4D;">Transparency log</div>
+            <div style="font-size: 11.5px; color: #4A6B54; margin-bottom: 9px;">the records</div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #F7F5F0; background: #1F7A4D; padding: 2px 7px;">load-bearing</span>
+          </div>
+          <div style="border: 1px solid #D5CFC1; background: #FCFBF7; padding: 12px 13px;">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 3px;">Graph view</div>
+            <div style="font-size: 11.5px; color: #6E6759; margin-bottom: 9px;">lineage links</div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px;">rebuildable</span>
+          </div>
+          <div style="border: 1px solid #D5CFC1; background: #FCFBF7; padding: 12px 13px;">
+            <div style="font-size: 13px; font-weight: 500; margin-bottom: 3px;">Relational index</div>
+            <div style="font-size: 11.5px; color: #6E6759; margin-bottom: 9px;">lookups</div>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px;">rebuildable</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </figure>
 
-### 3.1 The provenance record
+The outer ring is everything Soma doesn't control: news sites, financial data APIs, the LLM providers. It can be wrong, slow, or hostile, so nothing it says is taken as true. We snapshot exactly what it returns and treat that snapshot as a faithful record of what was received, never as a fact about the world.
 
-```json
-{ "step_id": "wf_8f2e/step_04/attempt_02",
-  "action_type": "llm_generate | api_fetch | db_write | human_edit | human_approval",
-  "outcome": "success | failure",
-  "actor": { "identity": "agent:memo-writer/v2.3.1", "cert_fingerprint": "sha256:9c1d...",
-             "delegation_chain": ["human:jane@soma.vc", "role:memo-agents"] },
-  "inputs": [ {"artifact": "sha256:a11f...", "role": "founder_profile"} ],
-  "output": { "artifact": "sha256:77e0...", "media_type": "text/markdown" },
-  "nondeterminism": { "model": "provider/model-id@2026-05", "prompt_template": "sha256:5dd2...",
-                      "rendered_prompt": "sha256:c4a9...", "params": {"temperature": "0.7"},
-                      "provider_request_id": "req_abc123" },
-  "timestamps": { "started": "...", "completed": "..." },
-  "prev_attempt": "wf_8f2e/step_04/attempt_01", "signature": "ed25519:..." }
-```
+The middle ring is Soma's own machinery: the orchestrator, the agents, the identity service. It does the real work and it holds signing keys, and the entire point of the design is to avoid having to trust it. We assume any single machine in it could be compromised, and we require that a lie told inside the middle ring is caught by the inner ring.
 
-Implemented as written (`impl/src/record.ts:36-55`). The decisions that matter:
+The inner ring is the trust root: the append-only log and the external notary. It's kept deliberately small, because it's the one thing everyone ultimately relies on, and a small trust root is one you can actually reason about end to end. Trust flows inward. The outer ring proves nothing, the middle ring's output is signed and then checked, and the inner ring is held honest by math and by an outsider.
 
-- **Hashes, never bytes.** Records stay near 1 KB regardless of artifact size; content lives in the CAS. This split also enables the privacy answer in section 6.
-- **Canonical bytes under every signature.** Identical content must produce identical bytes regardless of key order: sorted keys, floats/NaN and non-plain objects rejected (`impl/src/canonical.ts:16-39`); all four signed types share one payload helper (`impl/src/canonical.ts:64`).
-- **The `nondeterminism` block is the determinism boundary, reified.** We cannot record why the model produced this output, but we commit to everything that parameterized the call: fully attributable, though not replayable.
-- **Attempts are first-class.** `attempt_02` links to `attempt_01`; the lineage walk pulls failed attempts along (`impl/src/audit.ts:66`), and a bundle missing a linked failure fails verification.
-- **Identity is bound, not just signed.** The record's claimed identity and delegation chain must exactly match the certificate, not merely verify under its key (`impl/src/record.ts:74-98`); section 4 explains why.
-- **Human actions use the same schema.** "Who approved this, and what exact bytes did they approve" is one record.
+### Following one memo through the system
 
-### 3.2 Hash links are the provenance
+The clearest way to see the components work together is to follow a single memo from raw sources to an approved investment decision, and then watch it get audited. This is the exact path the prototype runs.
 
-Records reference inputs by content hash, and those inputs' records reference theirs, so the records form a Merkle DAG. The edges are hash references inside signed records, not rows in a mutable join table: falsifying ancestry requires a hash preimage or new signed records, and new records cannot enter the already-anchored log. Lineage and integrity are the same mechanism.
+<figure data-screen-label="Diagram 2 — one memo" style="margin: 0 0 46px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">DIAGRAM 2</span>
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 18px;">One memo, ingest to approval &mdash; a chain of signed records, failures included.</span>
+    </div>
+    <div style="padding: 40px 30px 30px;">
+      <!-- flow row: 6 records; node 3 stacks its failed attempt beneath it -->
+      <div style="display: flex; align-items: flex-start; justify-content: center; gap: 8px;">
+        <!-- 1 -->
+        <div style="width: 158px;">
+          <div style="background: #FCFBF7; border: 1px solid #1C1A15; border-top: 3px solid #B0832E;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759;">api_fetch</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #7A5A1C; margin-bottom: 6px;">agent:sourcing/v1.4.0</div><div style="font-size: 13px;">news snapshot</div></div>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #1F7A4D; text-align: center; margin-top: 6px;">frontier &mdash; no inputs</div>
+        </div>
+        <div style="color: #B0A894; font-size: 20px; padding-top: 22px;">&rarr;</div>
+        <!-- 2 -->
+        <div style="width: 158px;">
+          <div style="background: #FCFBF7; border: 1px solid #1C1A15; border-top: 3px solid #B0832E;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759;">api_fetch</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #7A5A1C; margin-bottom: 6px;">agent:sourcing/v1.4.0</div><div style="font-size: 13px;">financials snapshot</div></div>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #1F7A4D; text-align: center; margin-top: 6px;">frontier &mdash; no inputs</div>
+        </div>
+        <div style="color: #B0A894; font-size: 20px; padding-top: 22px;">&rarr;</div>
+        <!-- 3 (with failed attempt beneath) -->
+        <div style="width: 158px;">
+          <div style="background: #FCFBF7; border: 1px solid #1C1A15; border-top: 3px solid #B0832E;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759;">llm_generate</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #7A5A1C; margin-bottom: 6px;">agent:enrichment/v2.1.3</div><div style="font-size: 13px;">founder profile</div><div style="font-size: 10.5px; color: #6E6759; margin-top: 5px;">inputs: news + financials</div></div>
+          </div>
+          <!-- retry link down to failed attempt -->
+          <div style="display: flex; align-items: center; gap: 6px; justify-content: center; margin: 7px 0;">
+            <span style="color: #B23A2B; font-size: 16px; line-height: 1;">&uarr;</span>
+            <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #B23A2B;">prev_attempt</span>
+          </div>
+          <div style="background: #F7EDEA; border: 1px dashed #B23A2B;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 6px 10px; border-bottom: 1px dashed #DCA79C;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8F2E22;">llm_generate</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #B23A2B; border: 1px solid #DCA79C; padding: 0 5px;">fail</span></div>
+            <div style="padding: 8px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #8F2E22; margin-bottom: 5px;">agent:enrichment/v2.1.3</div><div style="font-size: 11.5px; color: #8F2E22;">provider timeout &mdash; no output</div></div>
+          </div>
+        </div>
+        <div style="color: #B0A894; font-size: 20px; padding-top: 22px;">&rarr;</div>
+        <!-- 4 -->
+        <div style="width: 158px;">
+          <div style="background: #FCFBF7; border: 1px solid #1C1A15; border-top: 3px solid #B0832E;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759;">llm_generate</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #7A5A1C; margin-bottom: 6px;">agent:memo-writer/v2.3.1</div><div style="font-size: 13px;">memo draft</div><div style="font-size: 10.5px; color: #6E6759; margin-top: 5px;">inputs: profile + financials</div></div>
+          </div>
+        </div>
+        <div style="color: #B0A894; font-size: 20px; padding-top: 22px;">&rarr;</div>
+        <!-- 5 -->
+        <div style="width: 158px;">
+          <div style="background: #FCFBF7; border: 1px solid #1C1A15; border-top: 3px solid #1C1A15;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #6E6759;">human_edit</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1C1A15; margin-bottom: 6px;">human:jane@soma.vc</div><div style="font-size: 13px;">memo (partner-reviewed)</div></div>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #6E6759; text-align: center; margin-top: 6px; line-height: 1.3;">new artifact,<br>not an overwrite</div>
+        </div>
+        <div style="color: #B0A894; font-size: 20px; padding-top: 22px;">&rarr;</div>
+        <!-- 6 -->
+        <div style="width: 158px;">
+          <div style="background: #F1F5F1; border: 1px solid #1F7A4D; border-top: 3px solid #1F7A4D;">
+            <div style="display: flex; justify-content: space-between; align-items: center; padding: 7px 10px; border-bottom: 1px solid #C6DDCD;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D;">human_approval</span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D; border: 1px solid #9CC4AA; padding: 0 5px;">ok</span></div>
+            <div style="padding: 9px 10px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1C1A15; margin-bottom: 6px;">human:jane@soma.vc</div><div style="font-size: 13px; font-weight: 600;">decision: invest</div></div>
+          </div>
+          <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; color: #1F7A4D; text-align: center; margin-top: 6px; line-height: 1.3;">pins the exact<br>approved bytes</div>
+        </div>
+      </div>
+      <!-- audit walk -->
+      <div style="margin-top: 28px; border: 1px solid #1F7A4D; background: #EAF2EC; padding: 12px 18px; display: flex; align-items: center; gap: 14px;">
+        <span style="color: #1F7A4D; font-size: 22px; line-height: 1;">&larr;</span>
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.05em; color: #1F7A4D; font-weight: 500;">LP QUESTION</span>
+        <span style="font-size: 13.5px; color: #1C1A15;">Start at the approval and walk every input back to the frontier &mdash; the <span style="color: #B23A2B; font-weight: 500;">failed attempt</span> is pulled in too, via its <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px;">prev_attempt</span> link.</span>
+      </div>
+    </div>
+  </figure>
 
-### 3.3 The log, and the audit walk
+A sourcing agent fetches a news article and a financials response and saves the raw bytes of each. Those two saves are the first records, and they have no inputs, which makes them the frontier: the edge of the system where outside data entered and everything downstream traces back to. An enrichment agent reads both snapshots and writes a founder profile. Its first attempt times out, and that failure is written down as its own record; the retry that succeeds points back at it, so the history keeps the failure instead of quietly erasing it. A memo agent drafts from the profile. A partner edits the draft, which creates a new document rather than overwriting the old one, because an overwrite would destroy the very history we're trying to keep. The partner approves, and the approval record pins the exact bytes approved. Later the LP asks the brief's headline question, and the system starts at that approval and walks the input links all the way back to the two frontier snapshots.
 
-The DAG proves internal consistency; the transparency log proves *completeness* - nothing quietly deleted, no forged parallel history. Inclusion proofs are log2(n) hashes (about 25 at year-two volume); consistency proofs let any holder of yesterday's root verify today's log still contains yesterday's history; hourly anchoring gives an auditor who trusts only the TSA - not Soma - a bound on when history existed (`impl/src/anchor.ts:18-46`).
+That walk is the whole system in miniature: the artifacts came from the content store, each step is a signed record, the records are ordered in the log, and the audit layer reconstructs the chain on demand.
 
-The LP asks: *"Show me every action and data source that contributed to the decision to invest in Company X."* The audit layer resolves the decision artifact, reverse-walks the DAG to the frontier (`impl/src/audit.ts:46`), and emits a proof bundle: every record in the subgraph with inclusion proofs, the current and last-anchored tree heads with a consistency proof between them, every certificate, the TSA receipt, and optionally the artifact bytes. A standalone verifier checks the entire bundle trusting exactly two public keys - the org CA and the TSA (`impl/src/verify.ts:14`) - covering tree-head signatures, the anchor, append-only consistency, per-record inclusion, certificate chains, record signatures and identity binding, lineage closure, and disclosed bytes. It shares no state with the system that produced the bundle; malformed input yields a failed report, never an exception. The four tamper scenarios on the dashboard - edited artifact, forged record under a lookalike CA, hidden failed attempt, wholesale log rewrite - are this verifier catching each attack (`impl/test/verify.test.ts:33,44,90,100`).
+### Durable workflows, and the boundary the brief asks about
 
-## 4. What building it taught us
+The brief singles out the boundary between deterministic and non-deterministic steps, and it's worth being precise about why that boundary is the genuinely hard part.
 
-Independent adversarial review of the prototype found two real bugs the original tests missed - both attribution failures, the very property this system exists to guarantee, and both invisible to happy-path testing.
+Reliable execution on its own is a solved, purchasable problem. A durable workflow engine (Temporal and its relatives) checkpoints a workflow's progress so a crash resumes where it left off, and uses idempotency keys so a retried database write happens once instead of twice. Rebuilding that would be reinventing mature infrastructure, so I don't. What I own is the one place where reliability and provenance collide, which is retries.
 
-**Expired certificates could pass via malformed timestamps.** In JavaScript, every comparison against an invalid date is false, so an unparseable timestamp read as "inside the validity window" - and records carry self-claimed timestamps, so an expired-cert holder could have signed with a garbage timestamp and passed, defeating rotation-by-expiry. Fixed by rejecting unparseable times, fail closed (`impl/src/identity.ts:119-123`).
+A retry means a step runs more than once, and the two kinds of step have to be handled as opposites. A **deterministic** step, like a database write or an API call, can be re-run safely, because doing it again produces the same effect and the idempotency key absorbs the duplicate. A **non-deterministic** step, like an LLM call, can't be re-run to check it, because running it again produces a different answer. So on a retry you never re-execute a non-deterministic step to verify it; you record its output once and reuse that record.
 
-**Identity was signed but not bound.** Verification checked the signature against the named certificate and the certificate against the CA - but never that the identity claimed *in the record* matched the certificate's *subject*. Any valid certificate holder could attribute its records to someone else: an agent key could produce a `human_approval` record claiming a partner's identity, and every check passed. Fixed by requiring exact identity and delegation-chain match (`impl/src/record.ts:84-98`; tests `impl/test/record.test.ts:74,90`).
+The consequence for provenance is the decision that matters. Every attempt, including the failed one, becomes its own permanent record, and the successful retry links back to the failure. Reliability is handled by resuming; provenance is preserved by never letting a retry hide what already happened. As the deep dive shows, a history that drops that failed attempt fails verification, so the boundary is enforced by the math, not just described in a doc.
 
-The lesson: in a verification system the dangerous bugs are not in what it checks but in what it silently does not check, and the difference only shows up when someone lies.
+### Identity, and the trust model
 
-## 5. Alternatives considered
+A signature only means something if you know whose key produced it and that the key couldn't have been stolen and quietly used for months. That's an identity problem, and the obvious approach to it is the wrong one.
 
-**Blockchain instead of an anchored log.** A permissionless chain removes the trusted log operator entirely - a real property we give up. But consensus infrastructure and an availability dependency are disproportionate for an internal platform writing under one record per second whose insider-rewrite window is already bounded to an hour by an external notary. Kept as an escape hatch: anchoring roots to a public chain is one added integration.
+The obvious approach is to give each agent a long-lived key and keep a revocation list for when a key leaks. I rejected it, because revocation is the part of every such system that fails in practice: a stolen key stays valid until a human notices and acts, and that window is exactly when the damage is done. So instead of long-lived keys, an organization CA issues **short-lived certificates**, good for hours, to each agent instance. Rotation then takes care of itself, because a running agent simply requests a fresh certificate as its current one nears expiry, and there's no long-lived secret lying around to steal. If a key is known to be compromised inside its short window, every issued certificate is itself logged, so it can still be denylisted for emergencies.
 
-**Lineage database plus separate audit log.** Simpler to build and query, but lineage and integrity become two systems that can disagree - an edge can be edited while the log stays intact, and the auditor must trust the join. The Merkle DAG makes the signed record stream itself the lineage: one mechanism instead of two.
+That trade has a cost, and naming it is the honest part: it needs an always-on issuing service, and if that service is down, agents can't sign. I took it because, at the rate agents work, keeping an issuer available is a far easier operational problem than keeping a revocation list both correct and fast. For an identity that had to sign while offline, the trade would flip and long-lived keys would win.
 
-**Long-lived agent keys with revocation.** Operationally familiar, but revocation is the hard part of any PKI: a stolen key is valid until noticed. Hours-long certificates make rotation automatic and bound exposure to the window, at the cost of always-on issuance whose availability gates agent work. At agent-instance cadence, issuance is the cheaper problem; the trade reverses for identities that must sign offline.
+Two more pieces finish the model. An agent never acts on its own authority: its certificate must carry a delegation chain that terminates at a real human, or verification rejects it, so an accountable person always sits at the root of any automated chain. And holding a valid key is not enough to sign as someone else, a property the deep dive returns to, because the identity claimed in a record has to match the certificate the CA actually issued. Humans sit outside the agent machinery entirely, authenticating through Soma's existing SSO with hardware-backed keys.
 
-**Verification by replay for AI steps.** For deterministic steps, re-execute and compare - the strongest check, and it remains available. For LLM steps it fails today: re-running yields different output, and providers do not sign inference results. We chose attributable-not-replayable, committing to the full call context and the provider's request ID, and upgrade to provider attestation when it exists.
+The trust model reduces to a sentence: trust the org CA for who is who, trust an outside notary for when history existed, and trust nothing else, including Soma's own servers.
 
-## 6. Limitations, admitted
+### Storage, and what actually has to be trusted
 
-Each is structural; we state the choice and why it is acceptable, because auditors distrust systems that claim too much.
+<figure data-screen-label="Table 2 — storage layers" style="margin: 0 0 34px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="padding: 13px 22px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">TABLE 2</span> <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; margin-left: 12px;">Four storage layers &mdash; only one is load-bearing.</span></div>
+    <div style="display: grid; grid-template-columns: 1fr 1.2fr 1fr;">
+      <div style="padding: 10px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759;">LAYER</div>
+      <div style="padding: 10px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759;">WHAT IT HOLDS</div>
+      <div style="padding: 10px 20px; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759;">DO YOU HAVE TO TRUST IT?</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 14px; font-weight: 500;">Object store</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; color: #6E6759;">artifact bytes</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px;"><strong style="font-weight: 600;">No</strong> &mdash; self-verifying (the address is the hash)</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #9CC4AA; border-bottom: 1px solid #9CC4AA; background: #EAF2EC; font-size: 14px; font-weight: 600; color: #1F7A4D;">Transparency log</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #9CC4AA; border-bottom: 1px solid #9CC4AA; background: #EAF2EC; font-size: 13.5px; color: #4A6B54;">the records</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #9CC4AA; background: #EAF2EC; font-size: 13.5px; color: #1F7A4D;"><strong style="font-weight: 600;">Yes</strong> &mdash; this + the outside anchor is the only load-bearing layer</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 14px; font-weight: 500;">Graph view</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; color: #6E6759;">the lineage links</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px;"><strong style="font-weight: 600;">No</strong> &mdash; rebuildable from the log</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; font-size: 14px; font-weight: 500;">Relational index</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; font-size: 13.5px; color: #6E6759;">lookups</div>
+      <div style="padding: 13px 20px; font-size: 13.5px;"><strong style="font-weight: 600;">No</strong> &mdash; rebuildable from the log</div>
+    </div>
+  </figure>
 
-1. **Lineage, not truth.** A hallucination is recorded with perfect integrity. Mitigation: `human_approval` records on decision-grade artifacts, so accountable human judgment is in every chain that matters.
-2. **AI steps are attributable, never replay-verifiable** (section 5).
-3. **A compromised endpoint signs lies with a valid key.** Short-lived certs shrink exposure to hours; the anchored log bounds when forgeries could have entered. Containment, not elimination.
-4. **External data is trust-on-first-fetch.** Hash at the earliest boundary with fetch metadata; disputes reduce to "this is exactly what their API returned at 14:02 UTC."
-5. **Append-only vs right-to-be-forgotten.** Decided up front because it cannot be retrofitted: only hashes enter the log; sensitive artifacts are encrypted per subject in the CAS, and deleting the key destroys content while every proof still verifies.
-6. **Tamper-evident, not tamper-proof.** Until the hourly anchor, an insider controlling the log could rewrite the unanchored tail. A disclosed dial: anchor more often, or to multiple notaries.
-7. **Record timestamps are self-claimed** (found during the adversarial review): the anchor bounds the log prefix, not individual record times. Per-record countersigned timestamps are the upgrade path.
+There are four storage layers, and the reason to separate them is that only one of them has to be trusted. Artifact bytes sit in ordinary object storage, self-verifying because the address is the hash. The records sit in the append-only log, which together with the external anchor is the only load-bearing layer. A graph view makes the audit walk fast, and a relational index answers ordinary "everything by this agent this month" lookups, and both are derived: if either were corrupted or distrusted, you'd rebuild it by replaying the log. That's the property worth designing for. An auditor who trusted none of Soma's databases could throw the derived layers away, rebuild them from the log, and every proof would still hold.
 
-Deliberately open: where proof bundles live at scale; anchoring cadence (contractual audit SLAs should set it); selective disclosure - bundles reveal graph structure today, and the hashes-not-bytes split makes redacted disclosure a designed v2.
+### The five questions, answered plainly
 
-## 7. Evolution at scale
+The brief's first requirement is really five questions each artifact must answer, so here they are in plain language, with the machinery that makes each true deferred to the deep dive.
 
-At 10x-100x: shard the log per fund or workflow class under a super-root; batch anchoring; tier cold CAS content to archival storage (hashes stay hot); move the graph projection to a dedicated graph store if traversal breadth demands. Nothing in the trust core - record schema, DAG, log construction, proofs - changes shape; scale evolves the plumbing around an unchanged guarantee.
+<figure data-screen-label="Table 1 — five provenance questions" style="margin: 0 0 34px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="padding: 13px 22px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">TABLE 1</span> <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; margin-left: 12px;">The five provenance questions, answered in their words.</span></div>
+    <div style="display: grid; grid-template-columns: 0.9fr 1.4fr;">
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 15px;">&ldquo;Which agent or human created this?&rdquo;</span></div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 14px; line-height: 1.55;">Every step names its actor &mdash; a person or a specific agent version &mdash; signed in, so nobody can put someone else&rsquo;s name on their work.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 15px;">&ldquo;What inputs or sources were used?&rdquo;</span></div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 14px; line-height: 1.55;">The record lists every input, each pointing at the exact earlier artifact. Follow the pointers back for the full family tree.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 15px;">&ldquo;What version of the agent produced it?&rdquo;</span></div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 14px; line-height: 1.55;">The version is in the actor&rsquo;s name; for AI steps the record also stores the model, prompt, and settings.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0;"><span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 15px;">&ldquo;When was it created?&rdquo;</span></div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 14px; line-height: 1.55;">Start and completion times are in the record &mdash; claimed by the actor, with the notary proving when a whole batch of history existed.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0;"><span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 15px;">&ldquo;Has it been modified?&rdquo;</span></div>
+      <div style="padding: 14px 20px; font-size: 14px; line-height: 1.55;">An artifact&rsquo;s name <em>is</em> the fingerprint of its bytes &mdash; change it and the name changes. Re-checked on every read.</div>
+    </div>
+  </figure>
 
-*The deep dive (section 3) is where the sharpest follow-up questions are expected and welcomed; every mechanism in it is runnable in the accompanying prototype.*
+## 2. Deep Dive: the provenance record, the DAG, and the log
+
+The brief asks for depth on one component. I chose this core, because it's where "who made this, from what, and has it changed" is actually answered, and because it's the part where a plausible-looking design can be quietly, dangerously wrong. Three things do the work together: the record that captures one step, the way records link into a graph that gives lineage, and the log that makes the whole history complete and unrewritable. I'll build each up from the problem it solves.
+
+### What a record has to capture, and why
+
+Rather than open with a schema, start from the five questions and let the record's contents be forced by them, because that's the only way to be sure the record is neither missing something nor carrying dead weight.
+
+*Who made this* forces an actor identity and a signature over the whole record, so the claim is both attributable and unforgeable. *From what inputs* forces a list of the exact upstream artifacts the step read, each referenced by its content fingerprint. *Which version* forces the agent's version into its name, and for an AI step, the model and its settings. *When* forces a start and completion time. And *has it been modified* comes for free from referencing the output by fingerprint, because any change to the output changes its fingerprint and breaks every record that pointed at it.
+
+Two choices inside the record earn their keep. It references inputs and outputs by fingerprint rather than embedding the bytes, so a record stays about a kilobyte whether the artifact is a 100-byte CRM update or a 50 KB memo, and so that deleting an artifact's bytes for a privacy request never disturbs the records that reference it. And a failed attempt is a first-class record that the successful retry links back to, which is what makes hiding a failure structurally impossible rather than merely discouraged.
+
+One field exists specifically for the AI problem, and it's worth pausing on, because it's the concrete form of "wrapping a non-deterministic step in a deterministic guarantee." We can't record *why* a model produced a given output; that lives inside a black box we don't control. What we can record is everything that went *into* the call: the model and version, the exact prompt, the sampling settings, and the provider's own request ID. So the step becomes fully attributable even though it can never be reproduced. That distinction, attributable but not reproducible, is the honest center of putting AI into an audit trail, and it's why the design never pretends it can re-run a model to check it (the tradeoffs return to this).
+
+### Hash-links are the lineage
+
+This is where individual records become a history. Each record names its inputs by fingerprint, and each of those inputs was the output of an earlier record that named *its* inputs by fingerprint, back to the frontier. So the records form a graph, and the edges of that graph are fingerprints sealed inside signed records.
+
+That detail is the entire reason to build it this way. The ordinary way to store lineage is a table with rows saying "memo X came from draft Y," which anyone with database access can quietly edit. Here, faking an ancestor would need either two different documents with the same fingerprint, which the hash function is designed to make infeasible, or a newly forged signed record, which can't be slipped into the log after the fact. Lineage and tamper-resistance stop being two systems you have to keep honest with each other. They become the same mechanism.
+
+<figure data-screen-label="Diagram 3 — same records two views" style="margin: 0 0 46px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">DIAGRAM 3</span>
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 18px;">The link between records <em>is</em> a fingerprint &mdash; so lineage and tamper-proofing are one thing.</span>
+    </div>
+    <div style="padding: 40px 40px 34px; display: grid; grid-template-columns: 1fr 70px 1fr; align-items: center;">
+      <!-- LEFT: the chain -->
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759; margin-bottom: 18px;">VIEW 1 &mdash; RECORDS, LINKED BY FINGERPRINT</div>
+        <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 12px 14px;">
+          <div style="font-size: 14px; font-weight: 500;">news snapshot</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px;"><span style="font-size: 11.5px; color: #6E6759;">its fingerprint:</span><span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 7px;"><svg width="9" height="11" viewBox="0 0 11 13"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>b8c0</span></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; padding: 8px 0 8px 16px;"><span style="color: #1F7A4D; font-size: 18px; line-height: 1;">&darr;</span><span style="font-size: 12px; color: #1F7A4D;">that fingerprint is listed as the next record&rsquo;s input</span></div>
+        <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 12px 14px;">
+          <div style="font-size: 14px; font-weight: 500;">founder profile</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px; flex-wrap: wrap;"><span style="font-size: 11.5px; color: #6E6759;">built from</span><span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px;"><svg width="9" height="11" viewBox="0 0 11 13"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>b8c0</span><span style="font-size: 11.5px; color: #6E6759;">&rarr; new fingerprint</span><span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #1F7A4D; background: #EAF2EC; border: 1px solid #9CC4AA; padding: 1px 7px;"><svg width="9" height="11" viewBox="0 0 11 13"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>3d2e</span></div>
+        </div>
+        <div style="display: flex; align-items: center; gap: 9px; padding: 8px 0 8px 16px;"><span style="color: #1F7A4D; font-size: 18px; line-height: 1;">&darr;</span></div>
+        <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 12px 14px;">
+          <div style="font-size: 14px; font-weight: 500;">memo draft</div>
+          <div style="display: flex; align-items: center; gap: 6px; margin-top: 8px;"><span style="font-size: 11.5px; color: #6E6759;">built from</span><span style="display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: #6E6759; border: 1px solid #D5CFC1; padding: 1px 7px;"><svg width="9" height="11" viewBox="0 0 11 13"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg>3d2e</span></div>
+        </div>
+        <div style="margin-top: 16px; font-size: 12.5px; color: #6E6759; line-height: 1.5; text-wrap: pretty;">To fake an ancestor you&rsquo;d need two files with the <em>same</em> fingerprint &mdash; which the math rules out.</div>
+      </div>
+      <!-- bridge -->
+      <div style="display: flex; flex-direction: column; align-items: center; gap: 10px;">
+        <span style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.06em; color: #6E6759; writing-mode: vertical-rl; transform: rotate(180deg);">SAME RECORDS</span>
+        <span style="color: #1F7A4D; font-size: 24px;">&rarr;</span>
+      </div>
+      <!-- RIGHT: the tree -->
+      <div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759; margin-bottom: 18px;">VIEW 2 &mdash; THE SAME RECORDS, SEALED IN THE LOG</div>
+        <!-- notary + top -->
+        <div style="display: flex; align-items: center; gap: 14px; justify-content: center; margin-bottom: 8px;">
+          <div style="border: 2px solid #1F7A4D; background: #2FA968; color: #0E1710; padding: 8px 12px; font-size: 12px; font-weight: 600; display: inline-flex; align-items: center; gap: 8px;"><svg width="14" height="14" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="#0E1710" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="#0E1710" stroke-width="1.4"></path></svg>outside notary signs</div>
+        </div>
+        <div style="display: flex; justify-content: center;"><span style="color: #1F7A4D; font-size: 18px;">&darr;</span></div>
+        <div style="display: flex; justify-content: center; margin-bottom: 10px;"><div style="border: 2px solid #1F7A4D; background: #EAF2EC; color: #1F7A4D; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; padding: 8px 18px;">top hash</div></div>
+        <!-- pair row -->
+        <div style="display: flex; justify-content: center; gap: 40px; margin-bottom: 8px;">
+          <div style="width: 84px; height: 5px; background: #9CC4AA;"></div>
+          <div style="width: 84px; height: 5px; background: #9CC4AA;"></div>
+        </div>
+        <div style="display: flex; justify-content: center; gap: 24px; margin-bottom: 12px;">
+          <div style="border: 1px solid #1F7A4D; background: #FCFBF7; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1F7A4D; padding: 5px 12px;">hash</div>
+          <div style="border: 1px solid #1F7A4D; background: #FCFBF7; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #1F7A4D; padding: 5px 12px;">hash</div>
+        </div>
+        <!-- leaves = the records -->
+        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px;">
+          <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 6px; text-align: center; font-size: 11px; line-height: 1.3;">news<br>snapshot</div>
+          <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 6px; text-align: center; font-size: 11px; line-height: 1.3;">founder<br>profile</div>
+          <div style="border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 6px; text-align: center; font-size: 11px; line-height: 1.3;">memo<br>draft</div>
+        </div>
+        <div style="font-family: 'IBM Plex Mono', monospace; font-size: 9.5px; letter-spacing: 0.05em; color: #6E6759; text-align: center; margin-top: 8px;">&uarr; the very same records are the leaves</div>
+        <div style="margin-top: 16px; font-size: 12.5px; color: #6E6759; line-height: 1.5; text-wrap: pretty;">And once the notary has signed, a forged record can&rsquo;t be slipped into the history after the fact.</div>
+      </div>
+    </div>
+  </figure>
+
+### Making the history complete and unrewritable
+
+The graph proves each record is genuine and shows what it came from. It does not prove the history is *complete*. A signature stops a record from being changed, but it does nothing to stop a record from being deleted, and nothing to stop someone from keeping a second, fully-signed, entirely invented history off to the side. You could run two sets of books.
+
+So the real question is how to store the growing pile of records so that no one, including whoever runs the storage, can delete one or swap in a fake history without it being obvious. Publishing a running list doesn't do it, because whoever controls the list can rewrite and republish it, and publishing means nothing unless someone pinned down what it said before.
+
+The mechanism that does work is worth building one step at a time. Hash every record. Pair up those hashes and hash each pair together. Pair up the results and hash again. Keep going until a single hash is left at the top. That top hash is a fingerprint of the entire history at once: change any record anywhere below it, and the top hash changes. This structure is a Merkle tree, and it's the same construction that keeps the world's website certificates honest under Certificate Transparency, which is good evidence it holds up against real adversaries at scale.
+
+<figure data-screen-label="Diagram 4 — Merkle tamper" style="margin: 0 0 46px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="display: flex; align-items: baseline; gap: 16px; padding: 14px 24px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;">
+      <span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">DIAGRAM 4</span>
+      <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 18px;">Change one record and the single number at the top changes &mdash; so no one can rewrite the past quietly.</span>
+    </div>
+    <div style="padding: 38px 40px 34px; display: flex; gap: 30px; align-items: flex-start;">
+      <!-- tree -->
+      <div style="position: relative; width: 640px; height: 372px; flex: none;">
+        <svg width="640" height="372" viewBox="0 0 640 372" style="position: absolute; inset: 0;">
+          <!-- base connectors -->
+          <g stroke="#C2BBAA" stroke-width="2" fill="none">
+            <path d="M320 40 L160 130"></path>
+            <path d="M320 40 L480 130"></path>
+            <path d="M160 130 L80 220"></path>
+            <path d="M160 130 L240 220"></path>
+            <path d="M480 130 L400 220"></path>
+            <path d="M480 130 L560 220"></path>
+            <path d="M80 220 L80 291"></path>
+            <path d="M240 220 L240 291"></path>
+            <path d="M400 220 L400 291"></path>
+            <path d="M560 220 L560 291"></path>
+          </g>
+          <!-- propagation path -->
+          <g stroke="#B23A2B" stroke-width="3" fill="none">
+            <path d="M400 291 L400 220"></path>
+            <path d="M400 220 L480 130"></path>
+            <path d="M480 130 L320 40"></path>
+          </g>
+          <!-- notary arrow -->
+          <g>
+            <path d="M398 28 L470 20" stroke="#1F7A4D" stroke-width="2" stroke-dasharray="4 3" fill="none"></path>
+            <path d="M470 20 l-9 -1 l4 6 z" fill="#1F7A4D"></path>
+          </g>
+        </svg>
+        <!-- notary -->
+        <div style="position: absolute; left: 476px; top: 2px; width: 156px; border: 2px solid #1F7A4D; background: #2FA968; color: #0E1710; padding: 7px 10px;">
+          <div style="display: flex; align-items: center; gap: 7px;"><svg width="13" height="13" viewBox="0 0 13 13"><circle cx="6.5" cy="6.5" r="5.6" fill="none" stroke="#0E1710" stroke-width="1.1"></circle><path d="M4 6.6l1.9 1.9L9.3 4.6" fill="none" stroke="#0E1710" stroke-width="1.4"></path></svg><span style="font-size: 11.5px; font-weight: 600; line-height: 1.2;">outside notary signs:</span></div>
+          <div style="font-size: 11px; margin-top: 4px; line-height: 1.3;">&ldquo;I saw this hash at 10:00.&rdquo;</div>
+        </div>
+        <!-- top hash -->
+        <div style="position: absolute; left: 245px; top: 18px; width: 150px; height: 44px; border: 2px solid #1F7A4D; background: #EAF2EC; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 12px; font-weight: 600; color: #1F7A4D;">TOP HASH</div>
+        <!-- level 1 -->
+        <div style="position: absolute; left: 108px; top: 114px; width: 104px; height: 32px; border: 1px solid #1F7A4D; background: #FCFBF7; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D;">combined</div>
+        <div style="position: absolute; left: 428px; top: 114px; width: 104px; height: 32px; border: 2px solid #B23A2B; background: #F7EDEA; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #B23A2B;">combined &ne;</div>
+        <!-- leaf hashes -->
+        <div style="position: absolute; left: 32px; top: 205px; width: 96px; height: 30px; border: 1px solid #1F7A4D; background: #FCFBF7; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D;">hash</div>
+        <div style="position: absolute; left: 192px; top: 205px; width: 96px; height: 30px; border: 1px solid #1F7A4D; background: #FCFBF7; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D;">hash</div>
+        <div style="position: absolute; left: 352px; top: 205px; width: 96px; height: 30px; border: 2px solid #B23A2B; background: #F7EDEA; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #B23A2B;">hash &ne;</div>
+        <div style="position: absolute; left: 512px; top: 205px; width: 96px; height: 30px; border: 1px solid #1F7A4D; background: #FCFBF7; display: flex; align-items: center; justify-content: center; font-family: 'IBM Plex Mono', monospace; font-size: 10px; color: #1F7A4D;">hash</div>
+        <!-- records -->
+        <div style="position: absolute; left: 15px; top: 291px; width: 130px; height: 58px; border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 9px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #6E6759;">RECORD 1</div><div style="font-size: 12px; margin-top: 3px;">news snapshot</div></div>
+        <div style="position: absolute; left: 175px; top: 291px; width: 130px; height: 58px; border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 9px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #6E6759;">RECORD 2</div><div style="font-size: 12px; margin-top: 3px;">founder profile</div></div>
+        <div style="position: absolute; left: 335px; top: 291px; width: 130px; height: 58px; border: 2px solid #B23A2B; background: #F7EDEA; padding: 8px 9px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #B23A2B;">RECORD 3 &mdash; ALTERED</div><div style="font-size: 12px; margin-top: 3px; color: #8F2E22;">memo draft (edited)</div></div>
+        <div style="position: absolute; left: 495px; top: 291px; width: 130px; height: 58px; border: 1px solid #1C1A15; background: #FCFBF7; padding: 8px 9px;"><div style="font-family: 'IBM Plex Mono', monospace; font-size: 9px; color: #6E6759;">RECORD 4</div><div style="font-size: 12px; margin-top: 3px;">decision: invest</div></div>
+      </div>
+      <!-- teaching callout -->
+      <div style="flex: 1; padding-top: 4px;">
+        <div style="display: inline-flex; align-items: center; gap: 8px; margin-bottom: 14px;"><span style="width: 22px; height: 3px; background: #B23A2B; display: inline-block;"></span><span style="font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.05em; color: #B23A2B;">ONE CHANGE RIPPLES ALL THE WAY UP</span></div>
+        <p style="font-size: 15px; line-height: 1.6; color: #1C1A15; margin: 0 0 16px; text-wrap: pretty;">Edit <strong>Record 3</strong> and its hash changes. That changes the combined hash above it, which changes the <strong>top hash</strong> &mdash; the one number that stands for the entire history.</p>
+        <p style="font-size: 15px; line-height: 1.6; color: #1C1A15; margin: 0 0 20px; text-wrap: pretty;">But the notary already signed the <em>old</em> top hash. So the rewritten history no longer matches what an outsider vouched for &mdash; the edit is caught, not hidden.</p>
+        <div style="border-top: 1px solid #E1DCD0; padding-top: 16px; display: grid; gap: 12px;">
+          <div style="display: flex; gap: 11px; align-items: flex-start;"><svg width="15" height="15" viewBox="0 0 13 13" style="flex: none; margin-top: 2px; color: #1F7A4D;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg><div><div style="font-size: 13.5px; font-weight: 600;">Prove one record is in the history</div><div style="font-size: 12.5px; color: #6E6759; line-height: 1.5;">Show the record plus a handful of neighbouring hashes (~25, even for millions of records) &mdash; not the whole log.</div></div></div>
+          <div style="display: flex; gap: 11px; align-items: flex-start;"><svg width="15" height="15" viewBox="0 0 13 13" style="flex: none; margin-top: 2px; color: #1F7A4D;"><rect x="1.3" y="5.6" width="8.4" height="6.6" rx="1" fill="none" stroke="currentColor" stroke-width="1.1"></rect><path d="M2.9 5.6V3.8a2.6 2.6 0 015.2 0v1.8" fill="none" stroke="currentColor" stroke-width="1.1"></path></svg><div><div style="font-size: 13.5px; font-weight: 600;">Prove today still contains all of yesterday</div><div style="font-size: 12.5px; color: #6E6759; line-height: 1.5;">Yesterday&rsquo;s smaller tree nests inside today&rsquo;s &mdash; nothing old was removed or changed, only new records added on the end.</div></div></div>
+        </div>
+      </div>
+    </div>
+  </figure>
+
+Two capabilities fall out of the tree almost for free, and they happen to be exactly the two an auditor needs. You can prove one record is in the history without handing over the whole thing: give the record plus the handful of sibling hashes along its path to the top, about 25 of them even for millions of records, and the recipient recomputes the top hash and checks it. And you can prove today's history still contains all of yesterday's, unchanged: given yesterday's top hash, there's a short proof that today's tree holds everything from yesterday with new records only appended on the end, and if anything old had been deleted or altered, no such proof could exist.
+
+One hole is left, and closing it is why the design reaches outside Soma at all. All of that assumes someone actually kept yesterday's top hash. If Soma controls everything, it could rewrite the past and simply lie about what the old top hash was. So the top hash can't live only inside Soma. Once an hour, the current top hash is handed to an outside timestamping notary whose one job is to sign "I saw this hash at this time," the same neutral third party used to timestamp legal documents. From that moment the top hash is pinned somewhere Soma can't reach, and any later attempt to rewrite even one old record fails to produce a valid consistency proof back to the hash the notary signed. Rewriting history stops being something forbidden by policy and becomes something detectable by arithmetic.
+
+### Answering the LP with a proof that needs no trust in Soma
+
+Now the brief's headline question resolves cleanly, and the shape of the answer is the point. The audit layer takes the approval artifact, walks back through the input links to the frontier, pulling failed attempts along by their links, and packages the result as a proof bundle: every record in the chain with its inclusion proof, the current and last-anchored top hashes with a consistency proof between them, every certificate involved, the notary's receipt, and optionally the document bytes.
+
+What makes that a proof rather than a report is what an outsider can do with it. A standalone verifier checks the entire bundle while trusting exactly two public keys, the org CA and the notary, and sharing no database or code path with the system that produced the bundle. It confirms the top-hash signatures, the external anchor, the append-only consistency since that anchor, each record's presence in the log and its signature and its identity binding, each certificate's chain to the CA, that the lineage closes with no dangling inputs, and that any disclosed bytes still match their fingerprints. If the bundle is malformed in any way it returns a failure instead of crashing, so a crash can never be mistaken for a pass.
+
+The four ways someone would actually try to cheat all fail against that verifier, and the prototype demonstrates each one.
+
+<figure data-screen-label="Table 3 — four tamper attempts" style="margin: 0 0 34px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="padding: 13px 22px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">TABLE 3</span> <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; margin-left: 12px;">Four ways to cheat &mdash; and how each one is caught.</span></div>
+    <div style="display: grid; grid-template-columns: 1fr 1.35fr;">
+      <div style="padding: 10px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #B23A2B;">THE CHEAT</div>
+      <div style="padding: 10px 20px; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #1F7A4D;">HOW IT&rsquo;S CAUGHT</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 14px; color: #8F2E22;">Edit an approved memo after the fact</div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">The disclosed bytes no longer match the artifact&rsquo;s fingerprint.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 14px; color: #8F2E22;">Forge a record under a same-named lookalike CA</div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">The certificate doesn&rsquo;t chain to the real CA, and the altered record isn&rsquo;t in the log.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 14px; color: #8F2E22;">Hide the failed attempt</div>
+      <div style="padding: 14px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">The retry&rsquo;s &ldquo;previous attempt&rdquo; link points at a record that&rsquo;s missing.</div>
+      <div style="padding: 14px 20px; border-right: 1px solid #E1DCD0; font-size: 14px; color: #8F2E22;">Rebuild the whole log with one record swapped</div>
+      <div style="padding: 14px 20px; font-size: 13.5px; line-height: 1.5;">The rebuilt history can&rsquo;t produce a consistency proof back to the notary&rsquo;s hash.</div>
+    </div>
+  </figure>
+
+### What building it taught us
+
+I had the prototype adversarially reviewed, and it found two real bugs the original tests missed. I include them because the brief grades security awareness, and the honest form of security awareness is showing where you were wrong. Both were failures of attribution, the exact property the system exists to guarantee, and both were invisible to ordinary testing because they only surface when someone deliberately lies.
+
+The first: expired certificates could pass on a broken timestamp. In JavaScript, every comparison against an invalid date returns false, so an unparseable timestamp read as being inside the validity window. Because a record carries a self-claimed time and the certificate is checked as of that time, a holder of an expired certificate could stamp a garbage time and slip through, which defeats the whole point of expiry-based rotation. The fix rejects unparseable times and fails closed.
+
+The second: identity was signed but not bound. The verifier checked the signature against the named certificate and the certificate against the CA, but never checked that the identity claimed in the record matched the certificate's subject. So any valid key holder could attribute work to someone else, and an agent's own key could produce a human approval in a partner's name with every check passing. The fix requires an exact match on the claimed identity and delegation chain.
+
+The lesson generalizes to any verification system, and it's the one I'd carry forward: the dangerous bugs are not in what the verifier checks, they're in what it silently forgets to check, and that gap only becomes visible when an adversary shows up. Which is why the most valuable tests in the suite are the ones that lie to it.
+
+## 3. Tradeoffs
+
+<figure data-screen-label="Table 4 — tradeoffs" style="margin: 0 0 20px; border: 1px solid #1C1A15; background: #FCFBF7;">
+    <div style="padding: 13px 22px; border-bottom: 1px solid #1C1A15; background: #F1F5F1;"><span style="font-family: 'IBM Plex Mono', monospace; font-size: 12px; letter-spacing: 0.08em; color: #1F7A4D; font-weight: 500;">TABLE 4</span> <span style="font-family: 'Newsreader', serif; font-style: italic; font-size: 17px; margin-left: 12px;">What the design optimizes for &mdash; and what it gives up, on purpose.</span></div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr;">
+      <div style="padding: 10px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #1F7A4D;">OPTIMIZED FOR</div>
+      <div style="padding: 10px 20px; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.06em; color: #6E6759;">GIVEN UP, ON PURPOSE</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">Verifiability by an outside party who doesn&rsquo;t trust Soma</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5; color: #6E6759;">Throughput (one write per second &mdash; nothing to optimize)</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">Provable completeness, via the Merkle log</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5; color: #6E6759;">Storage cleverness (small volumes; boring storage is easier to trust)</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">An insider with database access still can&rsquo;t rewrite history undetected</div>
+      <div style="padding: 13px 20px; border-bottom: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5; color: #6E6759;">Sub-minute audit latency (indexes are rebuilt from the log, not kept always-correct)</div>
+      <div style="padding: 13px 20px; border-right: 1px solid #E1DCD0; font-size: 13.5px; line-height: 1.5;">Proofs that travel to the auditor, verifiable off Soma&rsquo;s systems</div>
+      <div style="padding: 13px 20px; background: #F7F5F0;"></div>
+    </div>
+  </figure>
+
+Every one of those choices traces back to the single thing I optimized for: verifiability by a party who does not trust Soma. Content addressing so integrity is definitional, a Merkle log so completeness is provable, an external anchor so even an insider with database access can't rewrite history undetected, and a standalone verifier so the proof travels to the auditor instead of the auditor having to trust our systems. What I gave up, I gave up deliberately. Throughput was never in question at one write per second. Storage stayed boring on purpose, because small, boring storage is easier to trust than something clever. And I let audit queries take up to the minute the brief allows, which buys the freedom to rebuild query indexes from the log rather than maintain exotic always-correct ones.
+
+The forks worth naming are the ones where a reasonable person might have gone the other way.
+
+A **blockchain** instead of an anchored log would remove the trusted log operator entirely, which is a real property I give up. I passed because a permissionless consensus system and its availability dependency are wildly out of proportion for an internal tool at one write per second, whose rewrite window is already bounded to an hour by an outside notary. I kept it as an escape hatch: anchoring the top hashes into a public chain is one extra integration the day the trust requirements demand removing the operator.
+
+A **lineage database plus a separate audit log** would be simpler to build, and I rejected it because it splits lineage and integrity into two systems that can drift apart, leaving the auditor to trust the join between them. Making the signed record stream itself be the lineage removes that seam.
+
+**Verifying AI steps by re-running them** is the strongest possible check, and it stays available for deterministic steps. For LLM steps it can't work today, because re-running yields a different answer and providers don't sign their outputs, so the design commits to attributable-but-not-reproducible and records the full call context, with a clean upgrade to provider-signed inference the moment that exists.
+
+The limitations are worth stating plainly, because an auditor distrusts a system that claims too much. It proves lineage, not truth: a hallucination is recorded with perfect integrity, which is why decision-grade artifacts require a human approval, putting an accountable person in every real decision chain. A live, compromised endpoint can sign real lies with a valid key; short certificate windows and the anchored log contain that but don't eliminate it. Outside data is trust-on-first-fetch, fingerprinted at the earliest moment so a dispute reduces to "this is exactly what their API returned at 14:02 UTC." And record timestamps are self-claimed, with the anchor proving only when a batch of history existed; per-record countersigned timestamps from the notary are the fix, and the interface is ready for them.
+
+Finally, how it evolves, because the brief asks. The reassuring answer is that at 10x to 100x, nothing in the trust core changes shape; the record, the graph, the log, and the proofs stay exactly as they are. What grows is the plumbing around them. The log can be sharded per fund or per workflow class under a shared super-root so no single tree grows without bound, anchoring can be batched, cold artifact bytes can tier down to archival storage while their fingerprints stay hot, and the lineage view can move to a dedicated graph store, which is safe precisely because it's derived. The guarantee stays fixed while the machinery under it scales, which is the property you want from a trust system: what you could prove to the LP on the first day is what you can still prove on the ten-thousandth.
