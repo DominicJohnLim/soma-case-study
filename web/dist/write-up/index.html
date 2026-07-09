@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Write-up - Provenance and Auditability for an Agentic Investment Platform</title>
+<meta name="description" content="Provenance and auditability for an agentic investment platform - case study write-up">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;0,6..72,600;1,6..72,400;1,6..72,500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  html, body { margin: 0; padding: 0; background: #F7F5F0; }
+  body { font-family: 'Newsreader', serif; color: #1C1A15; -webkit-font-smoothing: antialiased; }
+  a { color: #1F7A4D; text-decoration: none; }
+  a:hover { color: #145936; text-decoration: underline; }
+  ::selection { background: #DCE9DF; }
+  * { box-sizing: border-box; }
+
+  .doc { max-width: 720px; margin: 0 auto; }
+  .doc h1 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 46px; line-height: 1.06; letter-spacing: -0.015em; margin: 0 0 22px 0; padding-top: 72px; }
+  .doc h1 + p em, .doc h1 + p { font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; line-height: 1.6; color: #6E6759; font-style: normal; }
+  .doc h2 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 29px; letter-spacing: -0.01em; margin: 0 0 18px 0; border-top: 1px solid #E1DCD0; padding-top: 40px; margin-top: 44px; }
+  .doc h3 { font-family: 'Newsreader', serif; font-weight: 500; font-size: 22px; margin: 28px 0 12px 0; }
+  .doc p { font-size: 17.5px; line-height: 1.65; margin: 0 0 16px 0; text-wrap: pretty; }
+  .doc li { font-size: 17px; line-height: 1.6; margin: 0 0 12px 0; text-wrap: pretty; }
+  .doc ul, .doc ol { margin: 0 0 20px 0; padding: 0 0 0 24px; }
+  .doc strong { font-weight: 600; }
+  .doc code { font-family: 'IBM Plex Mono', monospace; font-size: 0.82em; background: #EFECE3; padding: 0.05em 0.35em; border-radius: 2px; }
+  .doc blockquote { margin: 0 0 16px 0; padding: 20px 26px; border-left: 3px solid #1F7A4D; background: #FCFBF7; font-size: 18.5px; line-height: 1.6; font-style: italic; }
+  .doc blockquote p { font-size: 18.5px; margin: 0; }
+  .doc pre { font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; line-height: 1.65; background: #16140F; color: #CFC9BB; padding: 18px 22px; overflow-x: auto; margin: 0 0 20px 0; }
+  .doc pre code { background: none; padding: 0; font-size: 1em; color: inherit; }
+  .doc table { border-collapse: collapse; width: 100%; font-family: 'IBM Plex Sans', sans-serif; font-size: 13.5px; line-height: 1.5; background: #FCFBF7; border: 1px solid #1C1A15; margin: 0 0 20px 0; }
+  .doc th { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.07em; color: #6E6759; font-weight: 400; text-align: left; padding: 9px 16px; border-bottom: 1px solid #1C1A15; }
+  .doc td { padding: 11px 16px; border-bottom: 1px solid #E1DCD0; vertical-align: top; }
+  .doc tr:last-child td { border-bottom: none; }
+  .doc hr { border: none; border-top: 1px solid #1C1A15; margin: 32px 0 20px 0; }
+  .doc em { font-style: italic; }
+
+  @media (max-width: 640px) {
+    .doc h1 { font-size: 34px; padding-top: 48px; }
+    .doc h2 { font-size: 25px; }
+    .doc .table-wrap { overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+<div style="min-height: 100vh; background: #F7F5F0;">
+<div style="max-width: 1024px; margin: 0 auto; padding: 0 32px 96px 32px;">
+
+  <header style="display: flex; align-items: baseline; justify-content: space-between; gap: 24px; padding: 26px 0 22px 0; border-bottom: 1px solid #1C1A15; font-family: 'IBM Plex Sans', sans-serif;">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 13px; letter-spacing: 0.08em; font-weight: 500;">PROVENANCE KERNEL <span style="color: #6E6759; font-weight: 400;">/ write-up</span></div>
+    <nav style="display: flex; gap: 24px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px;">
+      <a href="/" style="color: #1C1A15;">&larr; dashboard</a>
+      <a href="/bundle.json" download style="color: #1C1A15;">bundle.json</a>
+    </nav>
+  </header>
+
+  <article class="doc">
+    <div style="font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; letter-spacing: 0.07em; color: #6E6759; padding-top: 72px; margin-bottom: -52px;">SYSTEM DESIGN CASE STUDY &middot; SUBMISSION</div>
+<h1>Provenance and Auditability for an Agentic Investment Platform</h1>
+<p><em>System design case study. A working prototype of the trust core accompanies this document (~2,000 lines of TypeScript, zero runtime dependencies, 39 tests); implementation claims cite <code>file:line</code>, and the <a href="/">dashboard</a> shows its real output.</em></p>
+<h2>1. Problem and framing</h2>
+<p>Soma&#39;s agents are non-deterministic: they hallucinate, vary between runs, and depend on external APIs we do not control. Yet LPs, partners, and regulators need to know, for any artifact: who produced it, from which inputs, and whether it has been modified. One organizing decision drives the design:</p>
+<blockquote>
+<p>We cannot make LLM steps deterministic, so we don&#39;t try. Instead, we make the <em>record</em> of every step deterministic, signed, and tamper-evident: hash the inputs, hash the output, sign the pair with the actor&#39;s identity, and append it to a log nobody - including us - can rewrite.</p>
+</blockquote>
+<p>Non-determinism stays contained inside the step; everything observable at the boundary is exact, attributable, and permanent.</p>
+<p><strong>Threat model.</strong> Defends against: silent modification of artifacts (including by administrators); misattribution; history rewriting; impersonation of agents or humans. Does not defend against: false source data faithfully recorded, fluent-but-wrong LLM output, or an attacker holding a live signing endpoint during its validity window (section 6).</p>
+<p><strong>Scale reality.</strong> 50,000 actions/day in two years is under one write per second, with artifacts of 100 B - 50 KB. This is a trust problem, not a throughput problem: boring storage (one ordered log, one Postgres, object storage), with the complexity budget spent on verifiability. The prototype&#39;s tests follow suit - Merkle proofs exercised exhaustively at small scale (<code>impl/test/tlog.test.ts:22,50</code>) rather than benchmarked.</p>
+<h2>2. Architecture</h2>
+<p>Three trust zones: untrusted external APIs; a semi-trusted execution zone (orchestrator, agents, identity service); and the trust root (transparency log plus external anchor). Storage and query layers are derived and rebuildable. Six components:</p>
+<ol>
+<li><p><strong>Content-addressed store (CAS).</strong> Every artifact and input snapshot is stored under the SHA-256 of its bytes. The hash is the identity, so &quot;has this been modified?&quot; is definitionally answerable; the prototype re-verifies on every read, so storage-layer tampering cannot silently return altered bytes (<code>impl/src/cas.ts:34-41</code>).</p>
+</li>
+<li><p><strong>Signed provenance records.</strong> One per step <em>attempt</em> - the envelope. Section 3 is its deep dive.</p>
+</li>
+<li><p><strong>Transparency log - the trust root.</strong> Records append to a Merkle tree in strict sequence, yielding inclusion proofs (&quot;this record is in the history&quot;) and consistency proofs (&quot;today&#39;s history extends yesterday&#39;s&quot;). Hourly, the signed root is anchored to an external RFC 3161 timestamp authority; after anchoring, insider rewrites are mathematically evident, not just policy-forbidden. Same construction as Certificate Transparency (<code>impl/src/tlog.ts:182,217</code>).</p>
+</li>
+<li><p><strong>Durable workflow orchestrator.</strong> Temporal-style: checkpointed state, idempotency keys for deterministic steps, recorded outputs reused - never blindly re-executed - for non-deterministic ones; each retry attempt emits its own record. The engine is purchasable infrastructure, deliberately not in the prototype; the property it must preserve is implemented: a failed attempt is a first-class record linked from its successor, and hiding it breaks verification (<code>impl/test/verify.test.ts:90</code>).</p>
+</li>
+<li><p><strong>Identity and keys.</strong> An org CA issues short-lived certificates (hours) to agent instances (<code>impl/src/identity.ts:82-94</code>); agent certs must carry a delegation chain terminating at a human or verification rejects (<code>impl/src/identity.ts:136</code>). Humans use SSO plus hardware-backed keys. Rotation is automatic by expiry; no long-lived agent secrets exist; issued certs are logged, so emergency denylisting is available.</p>
+</li>
+<li><p><strong>Audit layer.</strong> A graph projection consumed from the log - derived, and rebuildable by replay if ever distrusted. Answers ship as proof bundles verifiable outside our infrastructure (3.3).</p>
+</li>
+</ol>
+<p><strong>One memo, end to end</strong> (the prototype&#39;s demo): sourcing snapshots a news article and a financials response with fetch records carrying no inputs - the provenance frontier. An enrichment agent produces a founder profile; its first attempt fails and both attempts stay in history. The memo agent consumes the profile; a partner&#39;s edit is a <em>new</em> artifact citing the prior memo under a human identity - edits never overwrite; the approval record pins the hash of the exact bytes approved (<code>impl/src/demo.ts:270-280</code>).</p>
+<h2>3. Deep dive: the record, the DAG, and the log</h2>
+<h3>3.1 The provenance record</h3>
+<pre><code class="language-json">{ &quot;step_id&quot;: &quot;wf_8f2e/step_04/attempt_02&quot;,
+  &quot;action_type&quot;: &quot;llm_generate | api_fetch | db_write | human_edit | human_approval&quot;,
+  &quot;outcome&quot;: &quot;success | failure&quot;,
+  &quot;actor&quot;: { &quot;identity&quot;: &quot;agent:memo-writer/v2.3.1&quot;, &quot;cert_fingerprint&quot;: &quot;sha256:9c1d...&quot;,
+             &quot;delegation_chain&quot;: [&quot;human:jane@soma.vc&quot;, &quot;role:memo-agents&quot;] },
+  &quot;inputs&quot;: [ {&quot;artifact&quot;: &quot;sha256:a11f...&quot;, &quot;role&quot;: &quot;founder_profile&quot;} ],
+  &quot;output&quot;: { &quot;artifact&quot;: &quot;sha256:77e0...&quot;, &quot;media_type&quot;: &quot;text/markdown&quot; },
+  &quot;nondeterminism&quot;: { &quot;model&quot;: &quot;provider/model-id@2026-05&quot;, &quot;prompt_template&quot;: &quot;sha256:5dd2...&quot;,
+                      &quot;rendered_prompt&quot;: &quot;sha256:c4a9...&quot;, &quot;params&quot;: {&quot;temperature&quot;: &quot;0.7&quot;},
+                      &quot;provider_request_id&quot;: &quot;req_abc123&quot; },
+  &quot;timestamps&quot;: { &quot;started&quot;: &quot;...&quot;, &quot;completed&quot;: &quot;...&quot; },
+  &quot;prev_attempt&quot;: &quot;wf_8f2e/step_04/attempt_01&quot;, &quot;signature&quot;: &quot;ed25519:...&quot; }
+</code></pre>
+<p>Implemented as written (<code>impl/src/record.ts:36-55</code>). The decisions that matter:</p>
+<ul>
+<li><strong>Hashes, never bytes.</strong> Records stay near 1 KB regardless of artifact size; content lives in the CAS. This split also enables the privacy answer in section 6.</li>
+<li><strong>Canonical bytes under every signature.</strong> Identical content must produce identical bytes regardless of key order: sorted keys, floats/NaN and non-plain objects rejected (<code>impl/src/canonical.ts:16-39</code>); all four signed types share one payload helper (<code>impl/src/canonical.ts:64</code>).</li>
+<li><strong>The <code>nondeterminism</code> block is the determinism boundary, reified.</strong> We cannot record why the model produced this output, but we commit to everything that parameterized the call: fully attributable, though not replayable.</li>
+<li><strong>Attempts are first-class.</strong> <code>attempt_02</code> links to <code>attempt_01</code>; the lineage walk pulls failed attempts along (<code>impl/src/audit.ts:66</code>), and a bundle missing a linked failure fails verification.</li>
+<li><strong>Identity is bound, not just signed.</strong> The record&#39;s claimed identity and delegation chain must exactly match the certificate, not merely verify under its key (<code>impl/src/record.ts:74-98</code>); section 4 explains why.</li>
+<li><strong>Human actions use the same schema.</strong> &quot;Who approved this, and what exact bytes did they approve&quot; is one record.</li>
+</ul>
+<h3>3.2 Hash links are the provenance</h3>
+<p>Records reference inputs by content hash, and those inputs&#39; records reference theirs, so the records form a Merkle DAG. The edges are hash references inside signed records, not rows in a mutable join table: falsifying ancestry requires a hash preimage or new signed records, and new records cannot enter the already-anchored log. Lineage and integrity are the same mechanism.</p>
+<h3>3.3 The log, and the audit walk</h3>
+<p>The DAG proves internal consistency; the transparency log proves <em>completeness</em> - nothing quietly deleted, no forged parallel history. Inclusion proofs are log2(n) hashes (about 25 at year-two volume); consistency proofs let any holder of yesterday&#39;s root verify today&#39;s log still contains yesterday&#39;s history; hourly anchoring gives an auditor who trusts only the TSA - not Soma - a bound on when history existed (<code>impl/src/anchor.ts:18-46</code>).</p>
+<p>The LP asks: <em>&quot;Show me every action and data source that contributed to the decision to invest in Company X.&quot;</em> The audit layer resolves the decision artifact, reverse-walks the DAG to the frontier (<code>impl/src/audit.ts:46</code>), and emits a proof bundle: every record in the subgraph with inclusion proofs, the current and last-anchored tree heads with a consistency proof between them, every certificate, the TSA receipt, and optionally the artifact bytes. A standalone verifier checks the entire bundle trusting exactly two public keys - the org CA and the TSA (<code>impl/src/verify.ts:14</code>) - covering tree-head signatures, the anchor, append-only consistency, per-record inclusion, certificate chains, record signatures and identity binding, lineage closure, and disclosed bytes. It shares no state with the system that produced the bundle; malformed input yields a failed report, never an exception. The four tamper scenarios on the dashboard - edited artifact, forged record under a lookalike CA, hidden failed attempt, wholesale log rewrite - are this verifier catching each attack (<code>impl/test/verify.test.ts:33,44,90,100</code>).</p>
+<h2>4. What building it taught us</h2>
+<p>Independent adversarial review of the prototype found two real bugs the original tests missed - both attribution failures, the very property this system exists to guarantee, and both invisible to happy-path testing.</p>
+<p><strong>Expired certificates could pass via malformed timestamps.</strong> In JavaScript, every comparison against an invalid date is false, so an unparseable timestamp read as &quot;inside the validity window&quot; - and records carry self-claimed timestamps, so an expired-cert holder could have signed with a garbage timestamp and passed, defeating rotation-by-expiry. Fixed by rejecting unparseable times, fail closed (<code>impl/src/identity.ts:119-123</code>).</p>
+<p><strong>Identity was signed but not bound.</strong> Verification checked the signature against the named certificate and the certificate against the CA - but never that the identity claimed <em>in the record</em> matched the certificate&#39;s <em>subject</em>. Any valid certificate holder could attribute its records to someone else: an agent key could produce a <code>human_approval</code> record claiming a partner&#39;s identity, and every check passed. Fixed by requiring exact identity and delegation-chain match (<code>impl/src/record.ts:84-98</code>; tests <code>impl/test/record.test.ts:74,90</code>).</p>
+<p>The lesson: in a verification system the dangerous bugs are not in what it checks but in what it silently does not check, and the difference only shows up when someone lies.</p>
+<h2>5. Alternatives considered</h2>
+<p><strong>Blockchain instead of an anchored log.</strong> A permissionless chain removes the trusted log operator entirely - a real property we give up. But consensus infrastructure and an availability dependency are disproportionate for an internal platform writing under one record per second whose insider-rewrite window is already bounded to an hour by an external notary. Kept as an escape hatch: anchoring roots to a public chain is one added integration.</p>
+<p><strong>Lineage database plus separate audit log.</strong> Simpler to build and query, but lineage and integrity become two systems that can disagree - an edge can be edited while the log stays intact, and the auditor must trust the join. The Merkle DAG makes the signed record stream itself the lineage: one mechanism instead of two.</p>
+<p><strong>Long-lived agent keys with revocation.</strong> Operationally familiar, but revocation is the hard part of any PKI: a stolen key is valid until noticed. Hours-long certificates make rotation automatic and bound exposure to the window, at the cost of always-on issuance whose availability gates agent work. At agent-instance cadence, issuance is the cheaper problem; the trade reverses for identities that must sign offline.</p>
+<p><strong>Verification by replay for AI steps.</strong> For deterministic steps, re-execute and compare - the strongest check, and it remains available. For LLM steps it fails today: re-running yields different output, and providers do not sign inference results. We chose attributable-not-replayable, committing to the full call context and the provider&#39;s request ID, and upgrade to provider attestation when it exists.</p>
+<h2>6. Limitations, admitted</h2>
+<p>Each is structural; we state the choice and why it is acceptable, because auditors distrust systems that claim too much.</p>
+<ol>
+<li><strong>Lineage, not truth.</strong> A hallucination is recorded with perfect integrity. Mitigation: <code>human_approval</code> records on decision-grade artifacts, so accountable human judgment is in every chain that matters.</li>
+<li><strong>AI steps are attributable, never replay-verifiable</strong> (section 5).</li>
+<li><strong>A compromised endpoint signs lies with a valid key.</strong> Short-lived certs shrink exposure to hours; the anchored log bounds when forgeries could have entered. Containment, not elimination.</li>
+<li><strong>External data is trust-on-first-fetch.</strong> Hash at the earliest boundary with fetch metadata; disputes reduce to &quot;this is exactly what their API returned at 14:02 UTC.&quot;</li>
+<li><strong>Append-only vs right-to-be-forgotten.</strong> Decided up front because it cannot be retrofitted: only hashes enter the log; sensitive artifacts are encrypted per subject in the CAS, and deleting the key destroys content while every proof still verifies.</li>
+<li><strong>Tamper-evident, not tamper-proof.</strong> Until the hourly anchor, an insider controlling the log could rewrite the unanchored tail. A disclosed dial: anchor more often, or to multiple notaries.</li>
+<li><strong>Record timestamps are self-claimed</strong> (found during the adversarial review): the anchor bounds the log prefix, not individual record times. Per-record countersigned timestamps are the upgrade path.</li>
+</ol>
+<p>Deliberately open: where proof bundles live at scale; anchoring cadence (contractual audit SLAs should set it); selective disclosure - bundles reveal graph structure today, and the hashes-not-bytes split makes redacted disclosure a designed v2.</p>
+<h2>7. Evolution at scale</h2>
+<p>At 10x-100x: shard the log per fund or workflow class under a super-root; batch anchoring; tier cold CAS content to archival storage (hashes stay hot); move the graph projection to a dedicated graph store if traversal breadth demands. Nothing in the trust core - record schema, DAG, log construction, proofs - changes shape; scale evolves the plumbing around an unchanged guarantee.</p>
+<p><em>The deep dive (section 3) is where the sharpest follow-up questions are expected and welcomed; every mechanism in it is runnable in the accompanying prototype.</em></p>
+
+    <div style="border-top: 1px solid #1C1A15; margin-top: 32px; padding-top: 20px;">
+      <p style="font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; line-height: 1.6; color: #6E6759; margin: 0; text-wrap: pretty;">The prototype implements the architecture and deep dive end to end: 39 tests including four adversarial bundle scenarios, a demo that runs the memo pipeline and verifies its own history, and a standalone verifier. The <a href="/">dashboard</a> shows its real output.</p>
+    </div>
+  </article>
+
+</div>
+</div>
+</body>
+</html>
