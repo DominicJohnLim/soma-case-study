@@ -1,1 +1,1 @@
-{ "installCommand": null, "buildCommand": null, "outputDirectory": "dist" }
+{ "installCommand": "echo skip", "buildCommand": "echo prebuilt", "outputDirectory": "dist" }
